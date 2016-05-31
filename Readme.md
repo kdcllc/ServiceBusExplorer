@@ -13,6 +13,6 @@ The latest version of this project can be found [here on github.com](https://git
 2. Version 2.0  - https://github.com/kdcllc/ServiceBusExplorer/tree/v2.0.0
 
 ###Binaries
-1. version 1.8 - https://github.com/kdcllc/ServiceBusExplorer/blob/v3.1.4/src/1.8.zip
-2. version 2.0 - https://github.com/kdcllc/ServiceBusExplorer/blob/v3.1.4/src/2.0.zip
-3. version 2.1 - 
+1. version 1.8 - https://github.com/kdcllc/ServiceBusExplorer/blob/master/src/1.8.zip
+2. version 2.0 - https://github.com/kdcllc/ServiceBusExplorer/blob/master/src/2.0.zip
+3. version 2.1 - https://github.com/kdcllc/ServiceBusExplorer/blob/master/src/2.1.zip
