@@ -10,3 +10,4 @@ original code base is hard to find. This project space is dedicated to that purp
 The latest version of this project can be found [here on github.com](https://github.com/paolosalvatori/ServiceBusExplorer)
 
 1. Version 1.8 - is only available as binaries
+2. Version 2.0 
