@@ -1,17 +1,21 @@
 ﻿#region Copyright
 //=======================================================================================
-// Microsoft Business Platform Division Customer Advisory Team  
+// Microsoft Azure Customer Advisory Team 
 //
-// This sample is supplemental to the technical guidance published on the community
-// blog at http://www.appfabriccat.com/. 
+// This sample is supplemental to the technical guidance published on my personal
+// blog at http://blogs.msdn.com/b/paolos/. 
 // 
 // Author: Paolo Salvatori
 //=======================================================================================
-// Copyright © 2011 Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // 
-// THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER 
-// EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF 
-// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. YOU BEAR THE RISK OF USING IT.
+// LICENSED UNDER THE APACHE LICENSE, VERSION 2.0 (THE "LICENSE"); YOU MAY NOT USE THESE 
+// FILES EXCEPT IN COMPLIANCE WITH THE LICENSE. YOU MAY OBTAIN A COPY OF THE LICENSE AT 
+// http://www.apache.org/licenses/LICENSE-2.0
+// UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING, SOFTWARE DISTRIBUTED UNDER THE 
+// LICENSE IS DISTRIBUTED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY 
+// KIND, EITHER EXPRESS OR IMPLIED. SEE THE LICENSE FOR THE SPECIFIC LANGUAGE GOVERNING 
+// PERMISSIONS AND LIMITATIONS UNDER THE LICENSE.
 //=======================================================================================
 #endregion
 
@@ -58,13 +62,15 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
         private const string PropertyValueCannotBeNull = "The value of the {0} property cannot be null.";
         private const string WarningHeader = "The following validations failed:";
         private const string WarningFormat = "\n\r - {0}";
+        private const string SelectBrokeredMessageInspector = "Select a BrokeredMessage inspector...";
 
         //***************************
         // Constants
         //***************************
         private const string SaveAsTitle = "Save File As";
-        private const string XmlExtension = "xml";
-        private const string XmlFilter = "XML Files|*.xml|Text Documents|*.txt";
+        private const string JsonExtension = "json";
+        private const string JsonFilter = "JSON Files|*.json|Text Documents|*.txt";
+        private const string MessageFileFormat = "BrokeredMessage_{0}_{1}.json";
         #endregion
 
         #region Private Instance Fields
@@ -89,11 +95,13 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
             cboBodyType.SelectedIndex = 0;
 
             messagePropertyGrid.SelectedObject = brokeredMessage;
-            txtMessageText.Text = XmlHelper.Indent(serviceBusHelper.GetMessageText(brokeredMessage));
+
+            BodyType bodyType;
+            txtMessageText.Text = XmlHelper.Indent(serviceBusHelper.GetMessageText(brokeredMessage, out bodyType));
 
             // Initialize the DataGridView.
-            bindingSource.DataSource = new BindingList<MessagePropertyInfo>(brokeredMessage.Properties.Select(p => new MessagePropertyInfo(p.Key, 
-                                                                                                      p.Value.GetType().ToString().Substring(7),
+            bindingSource.DataSource = new BindingList<MessagePropertyInfo>(brokeredMessage.Properties.Select(p => new MessagePropertyInfo(p.Key,
+                                                                                                      GetShortValueTypeName(p.Value),
                                                                                                       p.Value)).ToList());
             propertiesDataGridView.AutoGenerateColumns = false;
             propertiesDataGridView.AutoSize = true;
@@ -152,6 +160,19 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
             propertiesDataGridView.RowHeadersDefaultCellStyle.ForeColor = SystemColors.ControlText;
             propertiesDataGridView.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(215, 228, 242);
             propertiesDataGridView.ColumnHeadersDefaultCellStyle.ForeColor = SystemColors.ControlText;
+
+            // Get Brokered Message Inspector classes
+            cboSenderInspector.Items.Add(SelectBrokeredMessageInspector);
+            cboSenderInspector.SelectedIndex = 0;
+
+            if (serviceBusHelper.BrokeredMessageInspectors == null)
+            {
+                return;
+            }
+            foreach (var key in serviceBusHelper.BrokeredMessageInspectors.Keys)
+            {
+                cboSenderInspector.Items.Add(key);
+            }
         }
         #endregion
 
@@ -235,9 +256,8 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                     {
                         return;
                     }
-                    if (string.IsNullOrEmpty(form.Path))
+                    if (string.IsNullOrWhiteSpace(form.Path))
                     {
-
                         return;
                     }
                     BodyType bodyType;
@@ -257,21 +277,23 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                                              Path = string.Format("{0}/{1}", serviceBusHelper.NamespaceUri.AbsolutePath, messageSender.Path),
                                              Scheme = "sb"
                                          }.Uri;
-                        outboundMessage = serviceBusHelper.CreateMessageForWcfReceiver(brokeredMessage,
+                        outboundMessage = serviceBusHelper.CreateMessageForWcfReceiver(brokeredMessage.Clone(txtMessageText.Text),
                                                                                        0,
                                                                                        false,
                                                                                        false,
-                                                                                       txtMessageText.Text,
                                                                                        wcfUri);
                     }
                     else
                     {
-                        outboundMessage = serviceBusHelper.CreateMessageForApiReceiver(brokeredMessage,
+                        outboundMessage = serviceBusHelper.CreateMessageForApiReceiver(brokeredMessage.Clone(txtMessageText.Text),
                                                                                        0,
                                                                                        false,
                                                                                        false,
-                                                                                       txtMessageText.Text,
-                                                                                       bodyType);
+                                                                                       false,
+                                                                                       bodyType,
+                                                                                       cboSenderInspector.SelectedIndex > 0 ?
+                                                                                       Activator.CreateInstance(serviceBusHelper.BrokeredMessageInspectors[cboSenderInspector.Text]) as IBrokeredMessageInspector :
+                                                                                       null);
                     }
                     outboundMessage.Properties.Clear();
                     var warningCollection = new ConcurrentBag<string>();
@@ -315,9 +337,9 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                     long elapsedMilliseconds;
                     serviceBusHelper.SendMessage(messageSender,
                                                  outboundMessage,
-                                                 txtMessageText.Text,
                                                  0,
                                                  bodyType == BodyType.Wcf,
+                                                 false,
                                                  true,
                                                  true,
                                                  out elapsedMilliseconds);
@@ -331,17 +353,17 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
 
         private void HandleException(Exception ex)
         {
-            if (ex == null || string.IsNullOrEmpty(ex.Message))
+            if (ex == null || string.IsNullOrWhiteSpace(ex.Message))
             {
                 return;
             }
             writeToLog(string.Format(CultureInfo.CurrentCulture, ExceptionFormat, ex.Message));
-            if (ex.InnerException != null && !string.IsNullOrEmpty(ex.InnerException.Message))
+            if (ex.InnerException != null && !string.IsNullOrWhiteSpace(ex.InnerException.Message))
             {
                 writeToLog(string.Format(CultureInfo.CurrentCulture, InnerExceptionFormat, ex.InnerException.Message));
             }
         }
-        
+
         private void MessageForm_Paint(object sender, PaintEventArgs e)
         {
             e.Graphics.DrawRectangle(new Pen(SystemColors.ActiveBorder, 1),
@@ -349,20 +371,25 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                                      cboBodyType.Location.Y - 1,
                                      cboBodyType.Size.Width + 1,
                                      cboBodyType.Size.Height + 1);
+            e.Graphics.DrawRectangle(new Pen(SystemColors.ActiveBorder, 1),
+                                     cboSenderInspector.Location.X - 1,
+                                     cboSenderInspector.Location.Y - 1,
+                                     cboSenderInspector.Size.Width + 1,
+                                     cboSenderInspector.Size.Height + 1);
         }
 
         private void btnSave_Click(object sender, EventArgs e)
         {
-            if (string.IsNullOrEmpty(txtMessageText.Text))
+            if (string.IsNullOrWhiteSpace(txtMessageText.Text))
             {
                 return;
             }
             saveFileDialog.Title = SaveAsTitle;
-            saveFileDialog.DefaultExt = XmlExtension;
-            saveFileDialog.Filter = XmlFilter;
+            saveFileDialog.DefaultExt = JsonExtension;
+            saveFileDialog.Filter = JsonFilter;
             saveFileDialog.FileName = CreateFileName();
             if (saveFileDialog.ShowDialog() != DialogResult.OK ||
-                string.IsNullOrEmpty(saveFileDialog.FileName))
+                string.IsNullOrWhiteSpace(saveFileDialog.FileName))
             {
                 return;
             }
@@ -372,16 +399,28 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
             }
             using (var writer = new StreamWriter(saveFileDialog.FileName))
             {
-                writer.Write(txtMessageText.Text);
+                writer.Write(MessageSerializationHelper.Serialize(brokeredMessage, txtMessageText.Text));
             }
         }
 
         private string CreateFileName()
         {
-            return string.Format("BrokeredMessage_{0}_{1}.xml",
+            return string.Format(MessageFileFormat,
                                  CultureInfo.CurrentCulture.TextInfo.ToTitleCase(serviceBusHelper.Namespace),
                                  DateTime.Now.ToString(CultureInfo.InvariantCulture).Replace('/', '-').Replace(':', '-'));
         }
+
+        private void propertiesDataGridView_DataError(object sender, DataGridViewDataErrorEventArgs e)
+        {
+            e.Cancel = true;
+        }
         #endregion
+
+        private string GetShortValueTypeName(object o)
+        {
+            if (o == null) o = new object();
+            var typeName = o.GetType().ToString();
+            return typeName.Length > 7 ? typeName.Substring(7) : typeName;
+        }
     }
 }

@@ -1,17 +1,21 @@
 ﻿#region Copyright
 //=======================================================================================
-// Microsoft Business Platform Division Customer Advisory Team  
+// Microsoft Azure Customer Advisory Team 
 //
-// This sample is supplemental to the technical guidance published on the community
-// blog at http://www.appfabriccat.com/. 
+// This sample is supplemental to the technical guidance published on my personal
+// blog at http://blogs.msdn.com/b/paolos/. 
 // 
 // Author: Paolo Salvatori
 //=======================================================================================
-// Copyright © 2011 Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // 
-// THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER 
-// EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF 
-// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. YOU BEAR THE RISK OF USING IT.
+// LICENSED UNDER THE APACHE LICENSE, VERSION 2.0 (THE "LICENSE"); YOU MAY NOT USE THESE 
+// FILES EXCEPT IN COMPLIANCE WITH THE LICENSE. YOU MAY OBTAIN A COPY OF THE LICENSE AT 
+// http://www.apache.org/licenses/LICENSE-2.0
+// UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING, SOFTWARE DISTRIBUTED UNDER THE 
+// LICENSE IS DISTRIBUTED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY 
+// KIND, EITHER EXPRESS OR IMPLIED. SEE THE LICENSE FOR THE SPECIFIC LANGUAGE GOVERNING 
+// PERMISSIONS AND LIMITATIONS UNDER THE LICENSE.
 //=======================================================================================
 #endregion
 
@@ -144,7 +148,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
 
         private void TextForm_Activated(object sender, EventArgs e)
         {
-            if (!string.IsNullOrEmpty(txtFilterExpression.Text))
+            if (!string.IsNullOrWhiteSpace(txtFilterExpression.Text))
             {
                 txtFilterExpression.Focus();
             }
@@ -183,7 +187,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
         private void FilterForm_KeyPress(object sender, KeyPressEventArgs e)
         {
             e.Handled = e.KeyChar == '\r';
-            if (e.Handled && !String.IsNullOrEmpty(txtFilterExpression.Text))
+            if (e.Handled && !String.IsNullOrWhiteSpace(txtFilterExpression.Text))
             {
                 btnOk_Click(sender, null);
             }
@@ -209,7 +213,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
         {
             try
             {
-                if (string.IsNullOrEmpty(entity))
+                if (string.IsNullOrWhiteSpace(entity))
                 {
                     return;
                 }
@@ -218,7 +222,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                 Text = string.Format(CaptionFormat, entity);
                 lblFilterExpression.Text = string.Format(FilterExpressionLabelFormat, entity);
 
-                if (!string.IsNullOrEmpty(FilterExpression))
+                if (!string.IsNullOrWhiteSpace(FilterExpression))
                 {
                     txtFilterExpression.TextChanged -= txtFilterExpression_TextChanged;
                     txtFilterExpression.Text = FilterExpression;
@@ -343,7 +347,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                 //timeFilterDataGridView.Rows.Clear();
                 timeFilters.Clear();
 
-                if (string.IsNullOrEmpty(FilterExpression))
+                if (string.IsNullOrWhiteSpace(FilterExpression))
                 {
                     return;
                 }
@@ -359,7 +363,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                     for (var j = 0; j < matches.Count; j++)
                     {
                         var pathGroup = matches[j].Groups[PathGroup].Value;
-                        if (!string.IsNullOrEmpty(pathGroup))
+                        if (!string.IsNullOrWhiteSpace(pathGroup))
                         {
                             txtStartsWith.Text = pathGroup;
                         }
@@ -375,8 +379,8 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                         var messageCountFilterOperator = matches[j].Groups[MessageCountFilterOperator].Value;
                         var messageCountFilterValue = matches[j].Groups[MessageCountFilterValue].Value;
                         int value;
-                        if (!string.IsNullOrEmpty(messageCountFilterOperator) &&
-                            !string.IsNullOrEmpty(messageCountFilterValue) &&
+                        if (!string.IsNullOrWhiteSpace(messageCountFilterOperator) &&
+                            !string.IsNullOrWhiteSpace(messageCountFilterValue) &&
                             operators.Any(
                                 op =>
                                 string.Compare(op, messageCountFilterOperator, StringComparison.OrdinalIgnoreCase) == 0) &&
@@ -397,9 +401,9 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                         var timeFilterProperty = matches[i].Groups[TimeFilterProperty].Value;
                         var timeFilterOperator = matches[i].Groups[TimeFilterOperator].Value;
                         var timeFilterValue = matches[i].Groups[TimeFilterValue].Value;
-                        if (!string.IsNullOrEmpty(timeFilterProperty) &&
-                            !string.IsNullOrEmpty(timeFilterOperator) &&
-                            !string.IsNullOrEmpty(timeFilterValue))
+                        if (!string.IsNullOrWhiteSpace(timeFilterProperty) &&
+                            !string.IsNullOrWhiteSpace(timeFilterOperator) &&
+                            !string.IsNullOrWhiteSpace(timeFilterValue))
                         {
                             timeFilters.Add(new TimeFilterInfo
                                 {
@@ -427,12 +431,12 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
         {
             var builder = new StringBuilder();
             var appendAnd = false;
-            if (!string.IsNullOrEmpty(txtStartsWith.Text))
+            if (!string.IsNullOrWhiteSpace(txtStartsWith.Text))
             {
                 builder.AppendFormat(StartsWithFormat, PathProperty, txtStartsWith.Text);
                 appendAnd = true;
             }
-            if (!string.IsNullOrEmpty(txtMessageCount.Text) && cboMessageCountOperator.SelectedIndex > 0)
+            if (!string.IsNullOrWhiteSpace(txtMessageCount.Text) && cboMessageCountOperator.SelectedIndex > 0)
             {
                 if (appendAnd)
                 {
@@ -443,9 +447,9 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
             }
             foreach (var timeFilter in timeFilters)
             {
-                if (string.IsNullOrEmpty(timeFilter.Property) ||
-                    string.IsNullOrEmpty(timeFilter.Operator) ||
-                    string.IsNullOrEmpty(timeFilter.Value))
+                if (string.IsNullOrWhiteSpace(timeFilter.Property) ||
+                    string.IsNullOrWhiteSpace(timeFilter.Operator) ||
+                    string.IsNullOrWhiteSpace(timeFilter.Value))
                 {
                     continue;
                 }

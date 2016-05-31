@@ -1,23 +1,29 @@
 ﻿#region Copyright
 //=======================================================================================
-// Microsoft Business Platform Division Customer Advisory Team  
+// Microsoft Azure Customer Advisory Team 
 //
-// This sample is supplemental to the technical guidance published on the community
-// blog at http://www.appfabriccat.com/. 
+// This sample is supplemental to the technical guidance published on my personal
+// blog at http://blogs.msdn.com/b/paolos/. 
 // 
 // Author: Paolo Salvatori
 //=======================================================================================
-// Copyright © 2011 Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // 
-// THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER 
-// EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF 
-// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. YOU BEAR THE RISK OF USING IT.
+// LICENSED UNDER THE APACHE LICENSE, VERSION 2.0 (THE "LICENSE"); YOU MAY NOT USE THESE 
+// FILES EXCEPT IN COMPLIANCE WITH THE LICENSE. YOU MAY OBTAIN A COPY OF THE LICENSE AT 
+// http://www.apache.org/licenses/LICENSE-2.0
+// UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING, SOFTWARE DISTRIBUTED UNDER THE 
+// LICENSE IS DISTRIBUTED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY 
+// KIND, EITHER EXPRESS OR IMPLIED. SEE THE LICENSE FOR THE SPECIFIC LANGUAGE GOVERNING 
+// PERMISSIONS AND LIMITATIONS UNDER THE LICENSE.
 //=======================================================================================
 #endregion
 
 #region Using Directives
 using System;
+using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Windows.Forms;
 using System.Drawing;
 #endregion
@@ -26,12 +32,30 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
 {
     public partial class ReceiveModeForm : Form
     {
+        #region Private Constants
+        //***************************
+        // Messages
+        //***************************
+        private const string SelectBrokeredMessageInspector = "Select a BrokeredMessage inspector...";
+        #endregion
+
         #region Public Constructor
-        public ReceiveModeForm(string message, int count)
+        public ReceiveModeForm(string message, int count, IEnumerable<string> brokeredMessageInspectors)
         {
             InitializeComponent();
             Text = message;
             txtMessageCount.Text = count.ToString(CultureInfo.InvariantCulture);
+            cboReceiverInspector.Items.Add(SelectBrokeredMessageInspector);
+            cboReceiverInspector.SelectedIndex = 0;
+            var messageInspectors = brokeredMessageInspectors as string[] ?? brokeredMessageInspectors.ToArray();
+            if (brokeredMessageInspectors == null || !messageInspectors.Any())
+            {
+                return;
+            }
+            for (var i = 0; i < messageInspectors.Length; i++)
+            {
+                cboReceiverInspector.Items.Add(messageInspectors[i]);
+            }
         }
         #endregion
 
@@ -45,6 +69,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
         public int Count { get; private set; }
         public bool Peek { get; private set; }
         public bool All { get; private set; }
+        public string Inspector { get; private set; }
         #endregion
 
         #region Event Handlers
@@ -58,6 +83,10 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
             }
             Peek = btnPeek.Checked;
             All = btnAll.Checked;
+            if (cboReceiverInspector.SelectedIndex > 0)
+            {
+                Inspector = cboReceiverInspector.Text;
+            }
             Close();
         }
 
@@ -145,6 +174,15 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
             {
                 btnTop.Checked = true;
             }
+        }
+        
+        private void grouperInspector_CustomPaint(PaintEventArgs e)
+        {
+            e.Graphics.DrawRectangle(new Pen(SystemColors.ActiveBorder, 1),
+                                    cboReceiverInspector.Location.X - 1,
+                                    cboReceiverInspector.Location.Y - 1,
+                                    cboReceiverInspector.Size.Width + 1,
+                                    cboReceiverInspector.Size.Height + 1);
         }
         #endregion
     }

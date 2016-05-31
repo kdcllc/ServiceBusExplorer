@@ -1,23 +1,26 @@
-/*
- [PLEASE DO NOT MODIFY THIS HEADER INFORMATION]---------------------
- Title: Grouper
- Description: A rounded groupbox with special painting features. 
- Date Created: December 17, 2005
- Author: Adam Smith
- Author Email: ibulwark@hotmail.com
- Websites: http://www.ebadgeman.com | http://www.codevendor.com
- 
- Version History:
- 1.0a - Beta Version - Release Date: December 17, 2005 
- -------------------------------------------------------------------
- */
+#region Copyright
+//=======================================================================================
+// [PLEASE DO NOT MODIFY THIS HEADER INFORMATION]---------------------
+// Title: Grouper
+// Description: A rounded groupbox with special painting features. 
+// Date Created: December 17, 2005
+// Author: Adam Smith
+// Author Email: ibulwark@hotmail.com
+// Websites: http://www.ebadgeman.com | http://www.codevendor.com
+//  
+// Version History:
+// 1.0a - Beta Version - Release Date: December 17, 2005 
+//=======================================================================================
+#endregion
 
+#region Using Directives
 using System;
 using System.ComponentModel;
 using System.ComponentModel.Design;
 using System.Drawing;
 using System.Drawing.Drawing2D;
-using System.Windows.Forms;
+using System.Windows.Forms; 
+#endregion
 
 namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
 {
@@ -289,8 +292,8 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
 			{
 				ShadowBrush = new SolidBrush(this.ShadowColor);
 				ShadowPath = new GraphicsPath();
-				ShadowPath.AddArc(ArcX1+(this.ShadowThickness-1), ArcY1+(this.ShadowThickness-1), ArcWidth, ArcHeight, 180, GroupBoxConstants.SweepAngle); // Top Left
-				ShadowPath.AddArc(ArcX2+(this.ShadowThickness-1), ArcY1+(this.ShadowThickness-1), ArcWidth, ArcHeight, 270, GroupBoxConstants.SweepAngle); //Top Right
+				ShadowPath.AddArc(ArcX1+(this.ShadowThickness-1), ArcY1+(this.ShadowThickness-1), ArcWidth, ArcHeight, 180, GroupBoxConstants.SweepAngle); // TopCount Left
+				ShadowPath.AddArc(ArcX2+(this.ShadowThickness-1), ArcY1+(this.ShadowThickness-1), ArcWidth, ArcHeight, 270, GroupBoxConstants.SweepAngle); //TopCount Right
 				ShadowPath.AddArc(ArcX2+(this.ShadowThickness-1), ArcY2+(this.ShadowThickness-1), ArcWidth, ArcHeight, 360, GroupBoxConstants.SweepAngle); //Bottom Right
 				ShadowPath.AddArc(ArcX1+(this.ShadowThickness-1), ArcY2+(this.ShadowThickness-1), ArcWidth, ArcHeight, 90, GroupBoxConstants.SweepAngle); //Bottom Left
 				ShadowPath.CloseAllFigures();
@@ -302,8 +305,8 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
 			//-----------------------------------
 
 			//Create Rounded Rectangle Path------
-			path.AddArc(ArcX1, ArcY1, ArcWidth, ArcHeight, 180, GroupBoxConstants.SweepAngle); // Top Left
-			path.AddArc(ArcX2, ArcY1, ArcWidth, ArcHeight, 270, GroupBoxConstants.SweepAngle); //Top Right
+			path.AddArc(ArcX1, ArcY1, ArcWidth, ArcHeight, 180, GroupBoxConstants.SweepAngle); // TopCount Left
+			path.AddArc(ArcX2, ArcY1, ArcWidth, ArcHeight, 270, GroupBoxConstants.SweepAngle); //TopCount Right
 			path.AddArc(ArcX2, ArcY2, ArcWidth, ArcHeight, 360, GroupBoxConstants.SweepAngle); //Bottom Right
 			path.AddArc(ArcX1, ArcY2, ArcWidth, ArcHeight, 90, GroupBoxConstants.SweepAngle); //Bottom Left
 			path.CloseAllFigures(); 
@@ -394,8 +397,8 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
 			{
 				ShadowBrush = new SolidBrush(this.ShadowColor);
 				ShadowPath = new GraphicsPath();
-				ShadowPath.AddArc(ArcX1+this.ShadowThickness, ArcY1+this.ShadowThickness, ArcWidth, ArcHeight, 180, GroupBoxConstants.SweepAngle); // Top Left
-				ShadowPath.AddArc(ArcX2+this.ShadowThickness, ArcY1+this.ShadowThickness, ArcWidth, ArcHeight, 270, GroupBoxConstants.SweepAngle); //Top Right
+				ShadowPath.AddArc(ArcX1+this.ShadowThickness, ArcY1+this.ShadowThickness, ArcWidth, ArcHeight, 180, GroupBoxConstants.SweepAngle); // TopCount Left
+				ShadowPath.AddArc(ArcX2+this.ShadowThickness, ArcY1+this.ShadowThickness, ArcWidth, ArcHeight, 270, GroupBoxConstants.SweepAngle); //TopCount Right
 				ShadowPath.AddArc(ArcX2+this.ShadowThickness, ArcY2+this.ShadowThickness, ArcWidth, ArcHeight, 360, GroupBoxConstants.SweepAngle); //Bottom Right
 				ShadowPath.AddArc(ArcX1+this.ShadowThickness, ArcY2+this.ShadowThickness, ArcWidth, ArcHeight, 90, GroupBoxConstants.SweepAngle); //Bottom Left
 				ShadowPath.CloseAllFigures();
@@ -407,8 +410,8 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
 			//-----------------------------------
 
 			//Create Rounded Rectangle Path------
-			path.AddArc(ArcX1, ArcY1, ArcWidth, ArcHeight, 180, GroupBoxConstants.SweepAngle); // Top Left
-			path.AddArc(ArcX2, ArcY1, ArcWidth, ArcHeight, 270, GroupBoxConstants.SweepAngle); //Top Right
+			path.AddArc(ArcX1, ArcY1, ArcWidth, ArcHeight, 180, GroupBoxConstants.SweepAngle); // TopCount Left
+			path.AddArc(ArcX2, ArcY1, ArcWidth, ArcHeight, 270, GroupBoxConstants.SweepAngle); //TopCount Right
 			path.AddArc(ArcX2, ArcY2, ArcWidth, ArcHeight, 360, GroupBoxConstants.SweepAngle); //Bottom Right
 			path.AddArc(ArcX1, ArcY2, ArcWidth, ArcHeight, 90, GroupBoxConstants.SweepAngle); //Bottom Left
 			path.CloseAllFigures(); 

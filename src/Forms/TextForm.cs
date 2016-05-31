@@ -1,17 +1,21 @@
 ﻿#region Copyright
 //=======================================================================================
-// Microsoft Business Platform Division Customer Advisory Team  
+// Microsoft Azure Customer Advisory Team 
 //
-// This sample is supplemental to the technical guidance published on the community
-// blog at http://www.appfabriccat.com/. 
+// This sample is supplemental to the technical guidance published on my personal
+// blog at http://blogs.msdn.com/b/paolos/. 
 // 
 // Author: Paolo Salvatori
 //=======================================================================================
-// Copyright © 2011 Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // 
-// THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER 
-// EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF 
-// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. YOU BEAR THE RISK OF USING IT.
+// LICENSED UNDER THE APACHE LICENSE, VERSION 2.0 (THE "LICENSE"); YOU MAY NOT USE THESE 
+// FILES EXCEPT IN COMPLIANCE WITH THE LICENSE. YOU MAY OBTAIN A COPY OF THE LICENSE AT 
+// http://www.apache.org/licenses/LICENSE-2.0
+// UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING, SOFTWARE DISTRIBUTED UNDER THE 
+// LICENSE IS DISTRIBUTED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY 
+// KIND, EITHER EXPRESS OR IMPLIED. SEE THE LICENSE FOR THE SPECIFIC LANGUAGE GOVERNING 
+// PERMISSIONS AND LIMITATIONS UNDER THE LICENSE.
 //=======================================================================================
 #endregion
 
@@ -37,9 +41,34 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
         public TextForm(string label, string content)
         {
             InitializeComponent();
-            grouperCaption.GroupTitle = string.IsNullOrEmpty(label) ? DefaultLabel : label;
-            txtContent.Text = string.IsNullOrEmpty(content) ? string.Empty : content;
-            Content = content;
+            grouperCaption.GroupTitle = string.IsNullOrWhiteSpace(label) ? DefaultLabel : label;
+            Content = XmlHelper.Indent(content);
+            txtContent.Text = string.IsNullOrWhiteSpace(Content) ? string.Empty : Content;
+        }
+
+        public TextForm(string text, string label, string content)
+        {
+            InitializeComponent();
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                Text = text;
+            }
+            grouperCaption.GroupTitle = string.IsNullOrWhiteSpace(label) ? DefaultLabel : label;
+            Content = XmlHelper.Indent(content);
+            txtContent.Text = string.IsNullOrWhiteSpace(Content) ? string.Empty : Content;
+        }
+
+        public TextForm(string text, string label, string content, bool hideOpen = false)
+        {
+            InitializeComponent();
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                Text = text;
+            }
+            btnOpen.Visible = !hideOpen;
+            grouperCaption.GroupTitle = string.IsNullOrWhiteSpace(label) ? DefaultLabel : label;
+            Content = XmlHelper.Indent(content);
+            txtContent.Text = string.IsNullOrWhiteSpace(Content) ? string.Empty : Content;
         }
         #endregion
 
@@ -78,6 +107,12 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
 
         #region Public Properties
         public string Content { get; set; }
+
+        public override sealed string Text
+        {
+            get { return base.Text; }
+            set { base.Text = value; }
+        }
         #endregion
 
         #region Private Methods
@@ -98,7 +133,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
             {
                 openFileDialog.FileName = string.Empty;
                 if (openFileDialog.ShowDialog() != DialogResult.OK ||
-                    string.IsNullOrEmpty(openFileDialog.FileName) ||
+                    string.IsNullOrWhiteSpace(openFileDialog.FileName) ||
                     !File.Exists(openFileDialog.FileName))
                 {
                     return;
@@ -106,7 +141,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                 using (var reader = new StreamReader(openFileDialog.FileName))
                 {
                     var text = reader.ReadToEnd();
-                    if (string.IsNullOrEmpty(text))
+                    if (string.IsNullOrWhiteSpace(text))
                     {
                         return;
                     }

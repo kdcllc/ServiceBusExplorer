@@ -1,17 +1,21 @@
 ﻿#region Copyright
 //=======================================================================================
-// Microsoft Business Platform Division Customer Advisory Team  
+// Microsoft Azure Customer Advisory Team 
 //
-// This sample is supplemental to the technical guidance published on the community
-// blog at http://www.appfabriccat.com/. 
+// This sample is supplemental to the technical guidance published on my personal
+// blog at http://blogs.msdn.com/b/paolos/. 
 // 
 // Author: Paolo Salvatori
 //=======================================================================================
-// Copyright © 2011 Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // 
-// THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER 
-// EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF 
-// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. YOU BEAR THE RISK OF USING IT.
+// LICENSED UNDER THE APACHE LICENSE, VERSION 2.0 (THE "LICENSE"); YOU MAY NOT USE THESE 
+// FILES EXCEPT IN COMPLIANCE WITH THE LICENSE. YOU MAY OBTAIN A COPY OF THE LICENSE AT 
+// http://www.apache.org/licenses/LICENSE-2.0
+// UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING, SOFTWARE DISTRIBUTED UNDER THE 
+// LICENSE IS DISTRIBUTED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY 
+// KIND, EITHER EXPRESS OR IMPLIED. SEE THE LICENSE FOR THE SPECIFIC LANGUAGE GOVERNING 
+// PERMISSIONS AND LIMITATIONS UNDER THE LICENSE.
 //=======================================================================================
 #endregion
 
@@ -36,7 +40,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
         {
             try
             {
-                if (string.IsNullOrEmpty(text))
+                if (string.IsNullOrWhiteSpace(text))
                 {
                     return false;
                 }
@@ -61,36 +65,42 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
         /// Indents the xml contained in the XmlDocument object.
         /// </summary>
         /// <param name="document">The XmlDocument containing the Xml to indent.</param>
+        /// <param name="encoding"></param>
         /// <returns>Xml indented</returns>
-        public static string Indent(XmlDocument document)
+        public static string Indent(XmlDocument document, Encoding encoding = null)
         {
             if (document == null)
             {
                 return null;
             }
-            var sb = new StringBuilder();
             var settings = new XmlWriterSettings
             {
+                Encoding = encoding ?? new UTF8Encoding(false),
                 Indent = true,
                 IndentChars = "  ",
                 NewLineChars = "\r\n",
                 NewLineHandling = NewLineHandling.Replace
             };
-            using (var writer = XmlWriter.Create(sb, settings))
+            using (var stream = new MemoryStream())
             {
-                document.Save(writer);
+                using (var writer = XmlWriter.Create(stream, settings))
+                {
+                    document.Save(writer);
+                    writer.Flush();
+                }
+                return settings.Encoding.GetString(stream.ToArray());
             }
-            return sb.ToString();
         }
 
         /// <summary>
         /// Indents the xml contained in the string object.
         /// </summary>
         /// <param name="xml">The string containing the Xml to indent.</param>
+        /// <param name="encoding"></param>
         /// <returns>Xml indented</returns>
-        public static string Indent(string xml)
+        public static string Indent(string xml, Encoding encoding = null)
         {
-            if (string.IsNullOrEmpty(xml))
+            if (string.IsNullOrWhiteSpace(xml))
             {
                 return null;
             }
@@ -100,19 +110,23 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
             }
             var document = new XmlDocument();
             document.LoadXml(xml);
-            var sb = new StringBuilder();
             var settings = new XmlWriterSettings
             {
+                Encoding = encoding ?? new UTF8Encoding(false),
                 Indent = true,
                 IndentChars = "  ",
                 NewLineChars = "\r\n",
                 NewLineHandling = NewLineHandling.Replace
             };
-            using (var writer = XmlWriter.Create(sb, settings))
+            using (var stream = new MemoryStream())
             {
-                document.Save(writer);
+                using (var writer = XmlWriter.Create(stream, settings))
+                {
+                    document.Save(writer);
+                    writer.Flush();
+                }
+                return settings.Encoding.GetString(stream.ToArray());
             }
-            return sb.ToString();
         }
     }
 }

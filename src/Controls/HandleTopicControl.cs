@@ -1,17 +1,21 @@
 ﻿#region Copyright
 //=======================================================================================
-// Microsoft Business Platform Division Customer Advisory Team  
+// Microsoft Azure Customer Advisory Team 
 //
-// This sample is supplemental to the technical guidance published on the community
-// blog at http://www.appfabriccat.com/. 
+// This sample is supplemental to the technical guidance published on my personal
+// blog at http://blogs.msdn.com/b/paolos/. 
 // 
 // Author: Paolo Salvatori
 //=======================================================================================
-// Copyright © 2011 Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // 
-// THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER 
-// EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF 
-// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. YOU BEAR THE RISK OF USING IT.
+// LICENSED UNDER THE APACHE LICENSE, VERSION 2.0 (THE "LICENSE"); YOU MAY NOT USE THESE 
+// FILES EXCEPT IN COMPLIANCE WITH THE LICENSE. YOU MAY OBTAIN A COPY OF THE LICENSE AT 
+// http://www.apache.org/licenses/LICENSE-2.0
+// UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING, SOFTWARE DISTRIBUTED UNDER THE 
+// LICENSE IS DISTRIBUTED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY 
+// KIND, EITHER EXPRESS OR IMPLIED. SEE THE LICENSE FOR THE SPECIFIC LANGUAGE GOVERNING 
+// PERMISSIONS AND LIMITATIONS UNDER THE LICENSE.
 //=======================================================================================
 #endregion
 
@@ -23,7 +27,9 @@ using System.Drawing;
 using System.Globalization;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Windows.Forms;
+using System.Threading.Tasks;
 using Microsoft.ServiceBus.Messaging;
 #endregion
 
@@ -49,9 +55,11 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
         //***************************
         private const int EnableBatchedOperationsIndex = 0;
         private const int EnableFilteringMessagesBeforePublishingIndex = 1;
-        private const int RequiresDuplicateDetectionIndex = 2;
-        private const int SupportOrderingIndex = 3;
-        private const int IsAnonymousAccessibleIndex = 4;
+        private const int EnablePartitioningIndex = 2;
+        private const int EnableExpressIndex = 3;
+        private const int RequiresDuplicateDetectionIndex = 4;
+        private const int SupportOrderingIndex = 5;
+        private const int IsAnonymousAccessibleIndex = 6;
 
         //***************************
         // Texts
@@ -62,7 +70,6 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
         private const string CancelText = "Cancel";
         private const string EnableText = "Enable";
         private const string DisableText = "Disable";
-        private const string TopicEntity = "TopicDescription";
         private const string UserMetadata = "User Metadata";
         private const string MaxGigabytes = "MAX";
 
@@ -90,7 +97,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
         private const string AuthorizationRuleDeleteMessage = "The Authorization Rule will be permanently deleted";
 
         private const string KeyNameCannotBeNull = "Authorization Rule [{0}]: the KeyName cannot be null";
-        private const string PrimaryKeyCannotBeNull = "Authorization Rule [{0}]: the PrimaryKey cannot be null";
+        //private const string PrimaryKeyCannotBeNull = "Authorization Rule [{0}]: the PrimaryKey cannot be null";
 
         //***************************
         // Tooltips
@@ -101,6 +108,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
         private const string DuplicateDetectionHistoryTimeWindowTooltip = "Gets or sets the duration of the time window for duplicate detection history.";
         private const string AutoDeleteOnIdleTooltip = "Gets or sets the maximum period of idleness after which the queue is auto deleted.";
         private const string UserMetadataTooltip = "Gets or sets the user metadata.";
+        private const string DeleteTooltip = "Delete the row.";
 
         //***************************
         // Property Labels
@@ -115,7 +123,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
         private const string ScheduledMessageCount = "Scheduled Message Count";
         private const string TransferMessageCount = "Transfer Message Count";
         private const string TransferDeadLetterMessageCount = "Transfer DL Message Count";
-        private const string IsReadOnly = "IsReadOnly";
+        private const string IsReadOnly = "Is ReadOnly";
 
         //***************************
         // Constants
@@ -144,10 +152,11 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
         private const string TimeFilterOperator2Name = "FilterOperator2";
         private const string TimeFilterValue1Name = "FilterValue1";
         private const string TimeFilterValue2Name = "FilterValue2";
-        private const string FriendlyNameProperty = "FriendlyName";
+        private const string FriendlyNameProperty = "DisplayName";
         private const string NameProperty = "Name";
-        private const string MetricsTopicEntity = "Topic";
+        private const string TopicEntity = "Topic";
         private const string Unknown = "Unkown";
+        private const string DeleteName = "Delete";
         #endregion
 
         #region Private Fields
@@ -158,7 +167,8 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
         private readonly string path;
         private readonly BindingSource dataPointBindingSource = new BindingSource();
         private readonly BindingList<MetricDataPoint> dataPointBindingList;
-        private int tabIndex;
+        private readonly List<string> metricTabPageIndexList = new List<string>();
+        private readonly ManualResetEvent metricsManualResetEvent = new ManualResetEvent(false);
         #endregion
 
         #region Private Static Fields
@@ -295,17 +305,25 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
             dataPointDataGridView.DataSource = dataPointBindingSource;
             dataPointDataGridView.ForeColor = SystemColors.WindowText;
 
+            if (topicDescription != null)
+            {
+                MetricInfo.GetMetricInfoListAsync(serviceBusHelper.Namespace, TopicEntity, topicDescription.Path).ContinueWith(t => metricsManualResetEvent.Set());
+            }
+
             if (dataPointDataGridView.Columns.Count == 0)
             {
                 // Create the Metric column
                 var metricColumn = new DataGridViewComboBoxColumn
                     {
-                        DataSource = MetricInfo.MetricInfos,
+                        DataSource = MetricInfo.EntityMetricDictionary.ContainsKey(TopicEntity) ?
+                                 MetricInfo.EntityMetricDictionary[TopicEntity] :
+                                 null,
                         DataPropertyName = MetricProperty,
                         DisplayMember = FriendlyNameProperty,
                         ValueMember = NameProperty,
                         Name = MetricProperty,
                         Width = 144,
+                        DropDownWidth = 250,
                         FlatStyle = FlatStyle.Flat,
                         DisplayStyle = DataGridViewComboBoxDisplayStyle.DropDownButton
                     };
@@ -365,6 +383,18 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                         Width = 136
                     };
                 dataPointDataGridView.Columns.Add(value2Column);
+
+                // Create delete column
+                var deleteButtonColumn = new DataGridViewButtonColumn
+                {
+                    Name = DeleteName,
+                    CellTemplate = new DataGridViewDeleteButtonCell(),
+                    HeaderText = string.Empty,
+                    Width = 22
+                };
+                deleteButtonColumn.CellTemplate.ToolTipText = DeleteTooltip;
+                deleteButtonColumn.UseColumnTextForButtonValue = true;
+                dataPointDataGridView.Columns.Add(deleteButtonColumn);
             }
 
             if (topicDescription != null)
@@ -429,6 +459,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                 btnRefresh.Visible = false;
                 btnChangeStatus.Visible = false;
                 btnMetrics.Visible = false;
+                btnCloseTabs.Visible = false;
 
                 // Create BindingList for Authorization Rules
                 var bindingList = new BindingList<AuthorizationRuleWrapper>(new List<AuthorizationRuleWrapper>())
@@ -441,7 +472,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                 authorizationRulesBindingSource.DataSource = bindingList;
                 authorizationRulesDataGridView.DataSource = authorizationRulesBindingSource;
 
-                if (!string.IsNullOrEmpty(path))
+                if (!string.IsNullOrWhiteSpace(path))
                 {
                     txtPath.Text = path;
                 }
@@ -453,7 +484,9 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
         {
             if (e.ListChangedType == ListChangedType.ItemDeleted)
             {
-                if (topicDescription.Authorization.Count > 0 && topicDescription.Authorization.Count > e.NewIndex)
+                if (topicDescription != null && 
+                    topicDescription.Authorization.Count > 0 && 
+                    topicDescription.Authorization.Count > e.NewIndex)
                 {
                     var rule = topicDescription.Authorization.ElementAt(e.NewIndex);
                     if (rule != null)
@@ -494,30 +527,19 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
 
             // Initialize property grid
             var propertyList = new List<string[]>();
-            if (serviceBusHelper.IsCloudNamespace)
-            {
-                propertyList.AddRange(new[]{new[]{Status, topicDescription.Status.ToString()},
-                                                new[]{IsReadOnly, topicDescription.IsReadOnly.ToString()},
-                                                new[]{SizeInBytes, topicDescription.SizeInBytes.ToString(CultureInfo.CurrentCulture)},
-                                                new[]{CreatedAt, topicDescription.CreatedAt.ToString(CultureInfo.CurrentCulture)},
-                                                new[]{AccessedAt, topicDescription.AccessedAt.ToString(CultureInfo.CurrentCulture)},
-                                                new[]{UpdatedAt, topicDescription.UpdatedAt.ToString(CultureInfo.CurrentCulture)},
-                                                new[]{ActiveMessageCount, topicDescription.MessageCountDetails.ActiveMessageCount.ToString(CultureInfo.CurrentCulture)},
-                                                new[]{DeadletterMessageCount, topicDescription.MessageCountDetails.DeadLetterMessageCount.ToString(CultureInfo.CurrentCulture)},
-                                                new[]{ScheduledMessageCount, topicDescription.MessageCountDetails.ScheduledMessageCount.ToString(CultureInfo.CurrentCulture)},
-                                                new[]{TransferMessageCount, topicDescription.MessageCountDetails.TransferMessageCount.ToString(CultureInfo.CurrentCulture)},
-                                                new[]{TransferDeadLetterMessageCount, topicDescription.MessageCountDetails.TransferDeadLetterMessageCount.ToString(CultureInfo.CurrentCulture)}});
 
-            }
-            else
-            {
-                propertyList.AddRange(new[]{new[]{Status, topicDescription.Status.ToString()},
-                                                new[]{IsReadOnly, topicDescription.IsReadOnly.ToString()},
-                                                new[]{SizeInBytes, topicDescription.SizeInBytes.ToString(CultureInfo.CurrentCulture)},
-                                                new[]{CreatedAt, topicDescription.CreatedAt.ToString(CultureInfo.CurrentCulture)},
-                                                new[]{AccessedAt, topicDescription.AccessedAt.ToString(CultureInfo.CurrentCulture)},
-                                                new[]{UpdatedAt, topicDescription.UpdatedAt.ToString(CultureInfo.CurrentCulture)}});
-            }
+            propertyList.AddRange(new[]{new[]{Status, topicDescription.Status.ToString()},
+                                            new[]{IsReadOnly, topicDescription.IsReadOnly.ToString()},
+                                            new[]{SizeInBytes, topicDescription.SizeInBytes.ToString("N0")},
+                                            new[]{CreatedAt, topicDescription.CreatedAt.ToString(CultureInfo.CurrentCulture)},
+                                            new[]{AccessedAt, topicDescription.AccessedAt.ToString(CultureInfo.CurrentCulture)},
+                                            new[]{UpdatedAt, topicDescription.UpdatedAt.ToString(CultureInfo.CurrentCulture)},
+                                            new[]{ActiveMessageCount, topicDescription.MessageCountDetails.ActiveMessageCount.ToString("N0")},
+                                            new[]{DeadletterMessageCount, topicDescription.MessageCountDetails.DeadLetterMessageCount.ToString("N0")},
+                                            new[]{ScheduledMessageCount, topicDescription.MessageCountDetails.ScheduledMessageCount.ToString("N0")},
+                                            new[]{TransferMessageCount, topicDescription.MessageCountDetails.TransferMessageCount.ToString("N0")},
+                                            new[]{TransferDeadLetterMessageCount, topicDescription.MessageCountDetails.TransferDeadLetterMessageCount.ToString("N0")}});
+
             propertyListView.Items.Clear();
             foreach (var array in propertyList)
             {
@@ -525,20 +547,20 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
             }
 
             // Path
-            if (!string.IsNullOrEmpty(topicDescription.Path))
+            if (!string.IsNullOrWhiteSpace(topicDescription.Path))
             {
                 txtPath.Text = topicDescription.Path;
             }
 
             // UserMetadata
-            if (!string.IsNullOrEmpty(topicDescription.UserMetadata))
+            if (!string.IsNullOrWhiteSpace(topicDescription.UserMetadata))
             {
                 txtUserMetadata.Text = topicDescription.UserMetadata;
             }
 
             // MaxQueueSizeInBytes
             trackBarMaxTopicSize.Value = serviceBusHelper.IsCloudNamespace
-                                             ? (int)topicDescription.MaxSizeInMegabytes / 1024
+                                             ? (int)(topicDescription.EnablePartitioning ? topicDescription.MaxSizeInMegabytes / 16384 : topicDescription.MaxSizeInMegabytes / 1024)
                                              : topicDescription.MaxSizeInMegabytes == SeviceBusForWindowsServerMaxTopicSize
                                                    ? 11
                                                    : (int)topicDescription.MaxSizeInMegabytes / 1024;
@@ -570,6 +592,16 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
             // EnableFilteringMessagesBeforePublishing
             checkedListBox.SetItemChecked(EnableFilteringMessagesBeforePublishingIndex,
                                           topicDescription.EnableFilteringMessagesBeforePublishing);
+            
+            if (serviceBusHelper.IsCloudNamespace)
+            {
+                // EnablePartitioning
+                checkedListBox.SetItemChecked(EnablePartitioningIndex, topicDescription.EnablePartitioning);
+
+                // EnableExpress
+                checkedListBox.SetItemChecked(EnableExpressIndex, topicDescription.EnableExpress);
+            }
+
             // RequiresDuplicateDetection
             checkedListBox.SetItemChecked(RequiresDuplicateDetectionIndex,
                                           topicDescription.RequiresDuplicateDetection);
@@ -592,6 +624,10 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
             if (topicDescription == null)
             {
                 return;
+            }
+            if (e.Index == EnablePartitioningIndex)
+            {
+                e.NewValue = topicDescription.EnablePartitioning ? CheckState.Checked : CheckState.Unchecked;
             }
             if (e.Index == RequiresDuplicateDetectionIndex)
             {
@@ -623,7 +659,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                 }
                 else
                 {
-                    if (string.IsNullOrEmpty(txtPath.Text))
+                    if (string.IsNullOrWhiteSpace(txtPath.Text))
                     {
                         writeToLog(PathCannotBeNull);
                         return;
@@ -644,13 +680,13 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                     var seconds = 0;
                     var milliseconds = 0;
 
-                    if (!string.IsNullOrEmpty(txtDefaultMessageTimeToLiveDays.Text) ||
-                        !string.IsNullOrEmpty(txtDefaultMessageTimeToLiveHours.Text) ||
-                        !string.IsNullOrEmpty(txtDefaultMessageTimeToLiveMinutes.Text) ||
-                        !string.IsNullOrEmpty(txtDefaultMessageTimeToLiveSeconds.Text) ||
-                        !string.IsNullOrEmpty(txtDefaultMessageTimeToLiveMilliseconds.Text))
+                    if (!string.IsNullOrWhiteSpace(txtDefaultMessageTimeToLiveDays.Text) ||
+                        !string.IsNullOrWhiteSpace(txtDefaultMessageTimeToLiveHours.Text) ||
+                        !string.IsNullOrWhiteSpace(txtDefaultMessageTimeToLiveMinutes.Text) ||
+                        !string.IsNullOrWhiteSpace(txtDefaultMessageTimeToLiveSeconds.Text) ||
+                        !string.IsNullOrWhiteSpace(txtDefaultMessageTimeToLiveMilliseconds.Text))
                     {
-                        if (!string.IsNullOrEmpty(txtDefaultMessageTimeToLiveDays.Text))
+                        if (!string.IsNullOrWhiteSpace(txtDefaultMessageTimeToLiveDays.Text))
                         {
                             if (!int.TryParse(txtDefaultMessageTimeToLiveDays.Text, out days))
                             {
@@ -658,7 +694,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                                 return;
                             }
                         }
-                        if (!string.IsNullOrEmpty(txtDefaultMessageTimeToLiveHours.Text))
+                        if (!string.IsNullOrWhiteSpace(txtDefaultMessageTimeToLiveHours.Text))
                         {
                             if (!int.TryParse(txtDefaultMessageTimeToLiveHours.Text, out hours))
                             {
@@ -666,7 +702,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                                 return;
                             }
                         }
-                        if (!string.IsNullOrEmpty(txtDefaultMessageTimeToLiveMinutes.Text))
+                        if (!string.IsNullOrWhiteSpace(txtDefaultMessageTimeToLiveMinutes.Text))
                         {
                             if (!int.TryParse(txtDefaultMessageTimeToLiveMinutes.Text, out minutes))
                             {
@@ -674,7 +710,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                                 return;
                             }
                         }
-                        if (!string.IsNullOrEmpty(txtDefaultMessageTimeToLiveSeconds.Text))
+                        if (!string.IsNullOrWhiteSpace(txtDefaultMessageTimeToLiveSeconds.Text))
                         {
                             if (!int.TryParse(txtDefaultMessageTimeToLiveSeconds.Text, out seconds))
                             {
@@ -682,7 +718,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                                 return;
                             }
                         }
-                        if (!string.IsNullOrEmpty(txtDefaultMessageTimeToLiveMilliseconds.Text))
+                        if (!string.IsNullOrWhiteSpace(txtDefaultMessageTimeToLiveMilliseconds.Text))
                         {
                             if (!int.TryParse(txtDefaultMessageTimeToLiveMilliseconds.Text, out milliseconds))
                             {
@@ -699,13 +735,13 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                     seconds = 0;
                     milliseconds = 0;
 
-                    if (!string.IsNullOrEmpty(txtDuplicateDetectionHistoryTimeWindowDays.Text) ||
-                        !string.IsNullOrEmpty(txtDuplicateDetectionHistoryTimeWindowHours.Text) ||
-                        !string.IsNullOrEmpty(txtDuplicateDetectionHistoryTimeWindowMinutes.Text) ||
-                        !string.IsNullOrEmpty(txtDuplicateDetectionHistoryTimeWindowSeconds.Text) ||
-                        !string.IsNullOrEmpty(txtDuplicateDetectionHistoryTimeWindowMilliseconds.Text))
+                    if (!string.IsNullOrWhiteSpace(txtDuplicateDetectionHistoryTimeWindowDays.Text) ||
+                        !string.IsNullOrWhiteSpace(txtDuplicateDetectionHistoryTimeWindowHours.Text) ||
+                        !string.IsNullOrWhiteSpace(txtDuplicateDetectionHistoryTimeWindowMinutes.Text) ||
+                        !string.IsNullOrWhiteSpace(txtDuplicateDetectionHistoryTimeWindowSeconds.Text) ||
+                        !string.IsNullOrWhiteSpace(txtDuplicateDetectionHistoryTimeWindowMilliseconds.Text))
                     {
-                        if (!string.IsNullOrEmpty(txtDuplicateDetectionHistoryTimeWindowDays.Text))
+                        if (!string.IsNullOrWhiteSpace(txtDuplicateDetectionHistoryTimeWindowDays.Text))
                         {
                             if (!int.TryParse(txtDuplicateDetectionHistoryTimeWindowDays.Text, out days))
                             {
@@ -713,7 +749,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                                 return;
                             }
                         }
-                        if (!string.IsNullOrEmpty(txtDuplicateDetectionHistoryTimeWindowHours.Text))
+                        if (!string.IsNullOrWhiteSpace(txtDuplicateDetectionHistoryTimeWindowHours.Text))
                         {
                             if (!int.TryParse(txtDuplicateDetectionHistoryTimeWindowHours.Text, out hours))
                             {
@@ -721,7 +757,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                                 return;
                             }
                         }
-                        if (!string.IsNullOrEmpty(txtDuplicateDetectionHistoryTimeWindowMinutes.Text))
+                        if (!string.IsNullOrWhiteSpace(txtDuplicateDetectionHistoryTimeWindowMinutes.Text))
                         {
                             if (!int.TryParse(txtDuplicateDetectionHistoryTimeWindowMinutes.Text, out minutes))
                             {
@@ -729,7 +765,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                                 return;
                             }
                         }
-                        if (!string.IsNullOrEmpty(txtDuplicateDetectionHistoryTimeWindowSeconds.Text))
+                        if (!string.IsNullOrWhiteSpace(txtDuplicateDetectionHistoryTimeWindowSeconds.Text))
                         {
                             if (!int.TryParse(txtDuplicateDetectionHistoryTimeWindowSeconds.Text, out seconds))
                             {
@@ -737,7 +773,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                                 return;
                             }
                         }
-                        if (!string.IsNullOrEmpty(txtDuplicateDetectionHistoryTimeWindowMilliseconds.Text))
+                        if (!string.IsNullOrWhiteSpace(txtDuplicateDetectionHistoryTimeWindowMilliseconds.Text))
                         {
                             if (!int.TryParse(txtDuplicateDetectionHistoryTimeWindowMilliseconds.Text, out milliseconds))
                             {
@@ -754,13 +790,13 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                     seconds = 0;
                     milliseconds = 0;
 
-                    if (!string.IsNullOrEmpty(txtAutoDeleteOnIdleDays.Text) ||
-                        !string.IsNullOrEmpty(txtAutoDeleteOnIdleHours.Text) ||
-                        !string.IsNullOrEmpty(txtAutoDeleteOnIdleMinutes.Text) ||
-                        !string.IsNullOrEmpty(txtAutoDeleteOnIdleSeconds.Text) ||
-                        !string.IsNullOrEmpty(txtAutoDeleteOnIdleMilliseconds.Text))
+                    if (!string.IsNullOrWhiteSpace(txtAutoDeleteOnIdleDays.Text) ||
+                        !string.IsNullOrWhiteSpace(txtAutoDeleteOnIdleHours.Text) ||
+                        !string.IsNullOrWhiteSpace(txtAutoDeleteOnIdleMinutes.Text) ||
+                        !string.IsNullOrWhiteSpace(txtAutoDeleteOnIdleSeconds.Text) ||
+                        !string.IsNullOrWhiteSpace(txtAutoDeleteOnIdleMilliseconds.Text))
                     {
-                        if (!string.IsNullOrEmpty(txtAutoDeleteOnIdleDays.Text))
+                        if (!string.IsNullOrWhiteSpace(txtAutoDeleteOnIdleDays.Text))
                         {
                             if (!int.TryParse(txtAutoDeleteOnIdleDays.Text, out days))
                             {
@@ -768,7 +804,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                                 return;
                             }
                         }
-                        if (!string.IsNullOrEmpty(txtAutoDeleteOnIdleHours.Text))
+                        if (!string.IsNullOrWhiteSpace(txtAutoDeleteOnIdleHours.Text))
                         {
                             if (!int.TryParse(txtAutoDeleteOnIdleHours.Text, out hours))
                             {
@@ -776,7 +812,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                                 return;
                             }
                         }
-                        if (!string.IsNullOrEmpty(txtAutoDeleteOnIdleMinutes.Text))
+                        if (!string.IsNullOrWhiteSpace(txtAutoDeleteOnIdleMinutes.Text))
                         {
                             if (!int.TryParse(txtAutoDeleteOnIdleMinutes.Text, out minutes))
                             {
@@ -784,7 +820,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                                 return;
                             }
                         }
-                        if (!string.IsNullOrEmpty(txtAutoDeleteOnIdleSeconds.Text))
+                        if (!string.IsNullOrWhiteSpace(txtAutoDeleteOnIdleSeconds.Text))
                         {
                             if (!int.TryParse(txtAutoDeleteOnIdleSeconds.Text, out seconds))
                             {
@@ -792,7 +828,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                                 return;
                             }
                         }
-                        if (!string.IsNullOrEmpty(txtAutoDeleteOnIdleMilliseconds.Text))
+                        if (!string.IsNullOrWhiteSpace(txtAutoDeleteOnIdleMilliseconds.Text))
                         {
                             if (!int.TryParse(txtAutoDeleteOnIdleMilliseconds.Text, out milliseconds))
                             {
@@ -805,6 +841,11 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
 
                     description.EnableBatchedOperations = checkedListBox.GetItemChecked(EnableBatchedOperationsIndex);
                     description.EnableFilteringMessagesBeforePublishing = checkedListBox.GetItemChecked(EnableFilteringMessagesBeforePublishingIndex);
+                    if (serviceBusHelper.IsCloudNamespace)
+                    {
+                        description.EnablePartitioning = checkedListBox.GetItemChecked(EnablePartitioningIndex);
+                        description.EnableExpress = checkedListBox.GetItemChecked(EnableExpressIndex);
+                    }
                     description.RequiresDuplicateDetection = checkedListBox.GetItemChecked(RequiresDuplicateDetectionIndex);
                     description.SupportOrdering = checkedListBox.GetItemChecked(SupportOrderingIndex);
 
@@ -816,14 +857,9 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                             var rule = bindingList[i];
                             if (serviceBusHelper.IsCloudNamespace)
                             {
-                                if (string.IsNullOrEmpty(rule.KeyName))
+                                if (string.IsNullOrWhiteSpace(rule.KeyName))
                                 {
                                     writeToLog(string.Format(KeyNameCannotBeNull, i));
-                                    continue;
-                                }
-                                if (string.IsNullOrEmpty(rule.PrimaryKey))
-                                {
-                                    writeToLog(string.Format(PrimaryKeyCannotBeNull, i));
                                     continue;
                                 }
                             }
@@ -845,17 +881,17 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                             }
                             if (serviceBusHelper.IsCloudNamespace)
                             {
-                                if (string.IsNullOrEmpty(rule.SecondaryKey))
+                                if (string.IsNullOrWhiteSpace(rule.SecondaryKey))
                                 {
                                     description.Authorization.Add(new SharedAccessAuthorizationRule(rule.KeyName,
-                                                                                                    rule.PrimaryKey,
+                                                                                                    rule.PrimaryKey ?? SharedAccessAuthorizationRule.GenerateRandomKey(),
                                                                                                     rightList));
                                 }
                                 else
                                 {
                                     description.Authorization.Add(new SharedAccessAuthorizationRule(rule.KeyName,
-                                                                                                    rule.PrimaryKey,
-                                                                                                    rule.SecondaryKey,
+                                                                                                    rule.PrimaryKey ?? SharedAccessAuthorizationRule.GenerateRandomKey(),
+                                                                                                    rule.SecondaryKey ?? SharedAccessAuthorizationRule.GenerateRandomKey(),
                                                                                                     rightList));
                                 }
                             }
@@ -886,12 +922,12 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
 
         private void HandleException(Exception ex)
         {
-            if (ex == null || string.IsNullOrEmpty(ex.Message))
+            if (ex == null || string.IsNullOrWhiteSpace(ex.Message))
             {
                 return;
             }
             writeToLog(string.Format(CultureInfo.CurrentCulture, ExceptionFormat, ex.Message));
-            if (ex.InnerException != null && !string.IsNullOrEmpty(ex.InnerException.Message))
+            if (ex.InnerException != null && !string.IsNullOrWhiteSpace(ex.InnerException.Message))
             {
                 writeToLog(string.Format(CultureInfo.CurrentCulture, InnerExceptionFormat, ex.InnerException.Message));
             }
@@ -918,13 +954,13 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                     var seconds = 0;
                     var milliseconds = 0;
 
-                    if (!string.IsNullOrEmpty(txtDefaultMessageTimeToLiveDays.Text) ||
-                        !string.IsNullOrEmpty(txtDefaultMessageTimeToLiveHours.Text) ||
-                        !string.IsNullOrEmpty(txtDefaultMessageTimeToLiveMinutes.Text) ||
-                        !string.IsNullOrEmpty(txtDefaultMessageTimeToLiveSeconds.Text) ||
-                        !string.IsNullOrEmpty(txtDefaultMessageTimeToLiveMilliseconds.Text))
+                    if (!string.IsNullOrWhiteSpace(txtDefaultMessageTimeToLiveDays.Text) ||
+                        !string.IsNullOrWhiteSpace(txtDefaultMessageTimeToLiveHours.Text) ||
+                        !string.IsNullOrWhiteSpace(txtDefaultMessageTimeToLiveMinutes.Text) ||
+                        !string.IsNullOrWhiteSpace(txtDefaultMessageTimeToLiveSeconds.Text) ||
+                        !string.IsNullOrWhiteSpace(txtDefaultMessageTimeToLiveMilliseconds.Text))
                     {
-                        if (!string.IsNullOrEmpty(txtDefaultMessageTimeToLiveDays.Text))
+                        if (!string.IsNullOrWhiteSpace(txtDefaultMessageTimeToLiveDays.Text))
                         {
                             if (!int.TryParse(txtDefaultMessageTimeToLiveDays.Text, out days))
                             {
@@ -932,7 +968,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                                 return;
                             }
                         }
-                        if (!string.IsNullOrEmpty(txtDefaultMessageTimeToLiveHours.Text))
+                        if (!string.IsNullOrWhiteSpace(txtDefaultMessageTimeToLiveHours.Text))
                         {
                             if (!int.TryParse(txtDefaultMessageTimeToLiveHours.Text, out hours))
                             {
@@ -940,7 +976,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                                 return;
                             }
                         }
-                        if (!string.IsNullOrEmpty(txtDefaultMessageTimeToLiveMinutes.Text))
+                        if (!string.IsNullOrWhiteSpace(txtDefaultMessageTimeToLiveMinutes.Text))
                         {
                             if (!int.TryParse(txtDefaultMessageTimeToLiveMinutes.Text, out minutes))
                             {
@@ -948,7 +984,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                                 return;
                             }
                         }
-                        if (!string.IsNullOrEmpty(txtDefaultMessageTimeToLiveSeconds.Text))
+                        if (!string.IsNullOrWhiteSpace(txtDefaultMessageTimeToLiveSeconds.Text))
                         {
                             if (!int.TryParse(txtDefaultMessageTimeToLiveSeconds.Text, out seconds))
                             {
@@ -956,7 +992,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                                 return;
                             }
                         }
-                        if (!string.IsNullOrEmpty(txtDefaultMessageTimeToLiveMilliseconds.Text))
+                        if (!string.IsNullOrWhiteSpace(txtDefaultMessageTimeToLiveMilliseconds.Text))
                         {
                             if (!int.TryParse(txtDefaultMessageTimeToLiveMilliseconds.Text, out milliseconds))
                             {
@@ -977,13 +1013,13 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                     seconds = 0;
                     milliseconds = 0;
 
-                    if (!string.IsNullOrEmpty(txtDuplicateDetectionHistoryTimeWindowDays.Text) ||
-                        !string.IsNullOrEmpty(txtDuplicateDetectionHistoryTimeWindowHours.Text) ||
-                        !string.IsNullOrEmpty(txtDuplicateDetectionHistoryTimeWindowMinutes.Text) ||
-                        !string.IsNullOrEmpty(txtDuplicateDetectionHistoryTimeWindowSeconds.Text) ||
-                        !string.IsNullOrEmpty(txtDuplicateDetectionHistoryTimeWindowMilliseconds.Text))
+                    if (!string.IsNullOrWhiteSpace(txtDuplicateDetectionHistoryTimeWindowDays.Text) ||
+                        !string.IsNullOrWhiteSpace(txtDuplicateDetectionHistoryTimeWindowHours.Text) ||
+                        !string.IsNullOrWhiteSpace(txtDuplicateDetectionHistoryTimeWindowMinutes.Text) ||
+                        !string.IsNullOrWhiteSpace(txtDuplicateDetectionHistoryTimeWindowSeconds.Text) ||
+                        !string.IsNullOrWhiteSpace(txtDuplicateDetectionHistoryTimeWindowMilliseconds.Text))
                     {
-                        if (!string.IsNullOrEmpty(txtDuplicateDetectionHistoryTimeWindowDays.Text))
+                        if (!string.IsNullOrWhiteSpace(txtDuplicateDetectionHistoryTimeWindowDays.Text))
                         {
                             if (!int.TryParse(txtDuplicateDetectionHistoryTimeWindowDays.Text, out days))
                             {
@@ -991,7 +1027,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                                 return;
                             }
                         }
-                        if (!string.IsNullOrEmpty(txtDuplicateDetectionHistoryTimeWindowHours.Text))
+                        if (!string.IsNullOrWhiteSpace(txtDuplicateDetectionHistoryTimeWindowHours.Text))
                         {
                             if (!int.TryParse(txtDuplicateDetectionHistoryTimeWindowHours.Text, out hours))
                             {
@@ -999,7 +1035,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                                 return;
                             }
                         }
-                        if (!string.IsNullOrEmpty(txtDuplicateDetectionHistoryTimeWindowMinutes.Text))
+                        if (!string.IsNullOrWhiteSpace(txtDuplicateDetectionHistoryTimeWindowMinutes.Text))
                         {
                             if (!int.TryParse(txtDuplicateDetectionHistoryTimeWindowMinutes.Text, out minutes))
                             {
@@ -1007,7 +1043,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                                 return;
                             }
                         }
-                        if (!string.IsNullOrEmpty(txtDuplicateDetectionHistoryTimeWindowSeconds.Text))
+                        if (!string.IsNullOrWhiteSpace(txtDuplicateDetectionHistoryTimeWindowSeconds.Text))
                         {
                             if (!int.TryParse(txtDuplicateDetectionHistoryTimeWindowSeconds.Text, out seconds))
                             {
@@ -1015,7 +1051,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                                 return;
                             }
                         }
-                        if (!string.IsNullOrEmpty(txtDuplicateDetectionHistoryTimeWindowMilliseconds.Text))
+                        if (!string.IsNullOrWhiteSpace(txtDuplicateDetectionHistoryTimeWindowMilliseconds.Text))
                         {
                             if (!int.TryParse(txtDuplicateDetectionHistoryTimeWindowMilliseconds.Text, out milliseconds))
                             {
@@ -1036,13 +1072,13 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                     seconds = 0;
                     milliseconds = 0;
 
-                    if (!string.IsNullOrEmpty(txtAutoDeleteOnIdleDays.Text) ||
-                        !string.IsNullOrEmpty(txtAutoDeleteOnIdleHours.Text) ||
-                        !string.IsNullOrEmpty(txtAutoDeleteOnIdleMinutes.Text) ||
-                        !string.IsNullOrEmpty(txtAutoDeleteOnIdleSeconds.Text) ||
-                        !string.IsNullOrEmpty(txtAutoDeleteOnIdleMilliseconds.Text))
+                    if (!string.IsNullOrWhiteSpace(txtAutoDeleteOnIdleDays.Text) ||
+                        !string.IsNullOrWhiteSpace(txtAutoDeleteOnIdleHours.Text) ||
+                        !string.IsNullOrWhiteSpace(txtAutoDeleteOnIdleMinutes.Text) ||
+                        !string.IsNullOrWhiteSpace(txtAutoDeleteOnIdleSeconds.Text) ||
+                        !string.IsNullOrWhiteSpace(txtAutoDeleteOnIdleMilliseconds.Text))
                     {
-                        if (!string.IsNullOrEmpty(txtAutoDeleteOnIdleDays.Text))
+                        if (!string.IsNullOrWhiteSpace(txtAutoDeleteOnIdleDays.Text))
                         {
                             if (!int.TryParse(txtAutoDeleteOnIdleDays.Text, out days))
                             {
@@ -1050,7 +1086,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                                 return;
                             }
                         }
-                        if (!string.IsNullOrEmpty(txtAutoDeleteOnIdleHours.Text))
+                        if (!string.IsNullOrWhiteSpace(txtAutoDeleteOnIdleHours.Text))
                         {
                             if (!int.TryParse(txtAutoDeleteOnIdleHours.Text, out hours))
                             {
@@ -1058,7 +1094,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                                 return;
                             }
                         }
-                        if (!string.IsNullOrEmpty(txtAutoDeleteOnIdleMinutes.Text))
+                        if (!string.IsNullOrWhiteSpace(txtAutoDeleteOnIdleMinutes.Text))
                         {
                             if (!int.TryParse(txtAutoDeleteOnIdleMinutes.Text, out minutes))
                             {
@@ -1066,7 +1102,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                                 return;
                             }
                         }
-                        if (!string.IsNullOrEmpty(txtAutoDeleteOnIdleSeconds.Text))
+                        if (!string.IsNullOrWhiteSpace(txtAutoDeleteOnIdleSeconds.Text))
                         {
                             if (!int.TryParse(txtAutoDeleteOnIdleSeconds.Text, out seconds))
                             {
@@ -1074,7 +1110,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                                 return;
                             }
                         }
-                        if (!string.IsNullOrEmpty(txtAutoDeleteOnIdleMilliseconds.Text))
+                        if (!string.IsNullOrWhiteSpace(txtAutoDeleteOnIdleMilliseconds.Text))
                         {
                             if (!int.TryParse(txtAutoDeleteOnIdleMilliseconds.Text, out milliseconds))
                             {
@@ -1090,6 +1126,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                     }
 
                     topicDescription.EnableBatchedOperations = checkedListBox.GetItemChecked(EnableBatchedOperationsIndex);
+                    topicDescription.EnableExpress = checkedListBox.GetItemChecked(EnableExpressIndex);
                     topicDescription.EnableFilteringMessagesBeforePublishing = checkedListBox.GetItemChecked(EnableFilteringMessagesBeforePublishingIndex);
                     topicDescription.SupportOrdering = checkedListBox.GetItemChecked(SupportOrderingIndex);
                     
@@ -1104,20 +1141,12 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                         for (var i = 0; i < bindingList.Count; i++)
                         {
                             var rule = bindingList[i];
-                            if (rule.AuthorizationRule != null)
-                            {
-                                continue;
-                            }
+
                             if (serviceBusHelper.IsCloudNamespace)
                             {
-                                if (string.IsNullOrEmpty(rule.KeyName))
+                                if (string.IsNullOrWhiteSpace(rule.KeyName))
                                 {
                                     writeToLog(string.Format(KeyNameCannotBeNull, i));
-                                    continue;
-                                }
-                                if (string.IsNullOrEmpty(rule.PrimaryKey))
-                                {
-                                    writeToLog(string.Format(PrimaryKeyCannotBeNull, i));
                                     continue;
                                 }
                             }
@@ -1139,17 +1168,22 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                             }
                             if (serviceBusHelper.IsCloudNamespace)
                             {
-                                if (string.IsNullOrEmpty(rule.SecondaryKey))
+                                if (string.IsNullOrWhiteSpace(rule.PrimaryKey) && string.IsNullOrWhiteSpace(rule.SecondaryKey))
                                 {
                                     topicDescription.Authorization.Add(new SharedAccessAuthorizationRule(rule.KeyName,
-                                                                                                         rule.PrimaryKey,
+                                                                                                         rightList));
+                                }
+                                else if (string.IsNullOrWhiteSpace(rule.SecondaryKey))
+                                {
+                                    topicDescription.Authorization.Add(new SharedAccessAuthorizationRule(rule.KeyName,
+                                                                                                         rule.PrimaryKey ?? SharedAccessAuthorizationRule.GenerateRandomKey(),
                                                                                                          rightList));
                                 }
                                 else
                                 {
                                     topicDescription.Authorization.Add(new SharedAccessAuthorizationRule(rule.KeyName,
-                                                                                                         rule.PrimaryKey,
-                                                                                                         rule.SecondaryKey,
+                                                                                                         rule.PrimaryKey ?? SharedAccessAuthorizationRule.GenerateRandomKey(),
+                                                                                                         rule.SecondaryKey ?? SharedAccessAuthorizationRule.GenerateRandomKey(),
                                                                                                          rightList));
                                 }
                             }
@@ -1242,7 +1276,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
             e.Graphics.FillRectangle(new SolidBrush(Color.FromArgb(215, 228, 242)), startX, -1, e.Bounds.Width + 1, e.Bounds.Height + 1);
             // Left vertical line
             e.Graphics.DrawLine(new Pen(SystemColors.ControlLightLight), startX, -1, startX, e.Bounds.Y + e.Bounds.Height + 1);
-            // Top horizontal line
+            // TopCount horizontal line
             e.Graphics.DrawLine(new Pen(SystemColors.ControlLightLight), startX, -1, endX, -1);
             // Bottom horizontal line
             e.Graphics.DrawLine(new Pen(SystemColors.ControlDark), startX, e.Bounds.Height - 1, endX, e.Bounds.Height - 1);
@@ -1271,7 +1305,13 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
             {
                 propertyListView.SuspendDrawing();
                 propertyListView.SuspendLayout();
-                propertyListView.Columns[1].Width = propertyListView.Width - propertyListView.Columns[0].Width - 4;
+                var width = propertyListView.Width - propertyListView.Columns[0].Width - 4;
+                var scrollbars = ScrollBarHelper.GetVisibleScrollbars(propertyListView);
+                if (scrollbars == ScrollBars.Vertical || scrollbars == ScrollBars.Both)
+                {
+                    width -= 17;
+                }
+                propertyListView.Columns[1].Width = width;
             }
             finally
             {
@@ -1567,7 +1607,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
         {
             if (!serviceBusHelper.IsCloudNamespace &&
                 e.RowIndex == authorizationRulesDataGridView.Rows.Count - 1 &&
-                string.IsNullOrEmpty(authorizationRulesDataGridView.Rows[e.RowIndex].Cells["IssuerName"].Value as string))
+                string.IsNullOrWhiteSpace(authorizationRulesDataGridView.Rows[e.RowIndex].Cells["IssuerName"].Value as string))
             {
                 authorizationRulesDataGridView.Rows[e.RowIndex].Cells["IssuerName"].Value = serviceBusHelper.Namespace;
             }
@@ -1614,6 +1654,15 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
 
         private void dataPointDataGridView_CellClick(object sender, DataGridViewCellEventArgs e)
         {
+            var dataGridViewColumn = dataPointDataGridView.Columns[DeleteName];
+            if (dataGridViewColumn != null &&
+                e.ColumnIndex == dataGridViewColumn.Index &&
+                e.RowIndex > -1 &&
+               !dataPointDataGridView.Rows[e.RowIndex].IsNewRow)
+            {
+                dataPointDataGridView.Rows.RemoveAt(e.RowIndex);
+                return;
+            }
             dataPointDataGridView.NotifyCurrentCellDirty(true);
         }
 
@@ -1644,6 +1693,18 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
         {
             try
             {
+                if (!MetricInfo.EntityMetricDictionary.ContainsKey(TopicEntity))
+                {
+                    return;
+                }
+                if (metricTabPageIndexList.Count > 0)
+                {
+                    for (var i = 0; i < metricTabPageIndexList.Count; i++)
+                    {
+                        mainTabControl.TabPages.RemoveByKey(metricTabPageIndexList[i]);
+                    }
+                    metricTabPageIndexList.Clear();
+                }
                 Cursor.Current = Cursors.WaitCursor;
                 if (dataPointBindingList.Count == 0)
                 {
@@ -1652,17 +1713,47 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                 foreach (var item in dataPointBindingList)
                 {
                     item.Entity = topicDescription.Path;
-                    item.Type = MetricsTopicEntity;
+                    item.Type = TopicEntity;
+                }
+                BindingList<MetricDataPoint> pointBindingList;
+                var allDataPoint = dataPointBindingList.FirstOrDefault(m => string.Compare(m.Metric, "all", StringComparison.OrdinalIgnoreCase) == 0);
+                if (allDataPoint != null)
+                {
+                    pointBindingList = new BindingList<MetricDataPoint>();
+                    foreach (var item in MetricInfo.EntityMetricDictionary[TopicEntity])
+                    {
+                        if (string.Compare(item.Name, "all", StringComparison.OrdinalIgnoreCase) == 0)
+                        {
+                            continue;
+                        }
+                        pointBindingList.Add(new MetricDataPoint
+                        {
+                            Entity = allDataPoint.Entity,
+                            FilterOperator1 = allDataPoint.FilterOperator1,
+                            FilterOperator2 = allDataPoint.FilterOperator2,
+                            FilterValue1 = allDataPoint.FilterValue1,
+                            FilterValue2 = allDataPoint.FilterValue2,
+                            Granularity = allDataPoint.Granularity,
+                            Graph = allDataPoint.Graph,
+                            Metric = item.Name,
+                            Type = allDataPoint.Type
+                        });
+                    }
+                }
+                else
+                {
+                    pointBindingList = dataPointBindingList;
                 }
                 var uris = MetricHelper.BuildUriListForDataPointMetricQueries(MainForm.SingletonMainForm.SubscriptionId,
-                                                                              serviceBusHelper.Namespace,
-                                                                              dataPointBindingList);
+                    serviceBusHelper.Namespace,
+                    pointBindingList);
                 var uriList = uris as IList<Uri> ?? uris.ToList();
                 if (uris == null || !uriList.Any())
                 {
                     return;
                 }
-                var metricData = MetricHelper.ReadMetricDataUsingTasks(uriList, MainForm.SingletonMainForm.CertificateThumbprint);
+                var metricData = MetricHelper.ReadMetricDataUsingTasks(uriList,
+                    MainForm.SingletonMainForm.CertificateThumbprint);
                 var metricList = metricData as IList<IEnumerable<MetricValue>> ?? metricData.ToList();
                 if (metricData == null && metricList.Count == 0)
                 {
@@ -1670,29 +1761,31 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                 }
                 for (var i = 0; i < metricList.Count; i++)
                 {
-                    if (metricList[i] == null)
+                    if (metricList[i] == null || !metricList[i].Any())
                     {
                         continue;
                     }
-                    var key = string.Format(MetricTabPageKeyFormat, tabIndex++);
-                    var metricInfo = MetricInfo.MetricInfos.FirstOrDefault(m => m.Name == dataPointBindingList[i].Metric);
-                    var friendlyName = metricInfo != null ? metricInfo.FriendlyName : dataPointBindingList[i].Metric;
+                    var key = string.Format(MetricTabPageKeyFormat, i);
+                    var metricInfo = MetricInfo.EntityMetricDictionary[TopicEntity].FirstOrDefault(m => m.Name == pointBindingList[i].Metric);
+                    var friendlyName = metricInfo != null ? metricInfo.DisplayName : pointBindingList[i].Metric;
                     var unit = metricInfo != null ? metricInfo.Unit : Unknown;
                     mainTabControl.TabPages.Add(key, friendlyName);
+                    metricTabPageIndexList.Add(key);
                     var tabPage = mainTabControl.TabPages[key];
                     tabPage.BackColor = Color.FromArgb(215, 228, 242);
                     tabPage.ForeColor = SystemColors.ControlText;
                     var control = new MetricValueControl(writeToLog,
-                                                    () => mainTabControl.TabPages.RemoveByKey(key),
-                                                    metricList[i],
-                                                    dataPointBindingList[i],
-                                                    metricInfo)
-                        {
-                            Location = new Point(0, 0),
-                            Dock = DockStyle.Fill,
-                            Tag = string.Format(GrouperFormat, friendlyName, unit)
-                        };
+                        () => mainTabControl.TabPages.RemoveByKey(key),
+                        metricList[i],
+                        pointBindingList[i],
+                        metricInfo)
+                    {
+                        Location = new Point(0, 0),
+                        Dock = DockStyle.Fill,
+                        Tag = string.Format(GrouperFormat, friendlyName, unit)
+                    };
                     mainTabControl.TabPages[key].Controls.Add(control);
+                    btnCloseTabs.Enabled = true;
                 }
             }
             catch (Exception ex)
@@ -1703,6 +1796,70 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
             {
                 Cursor.Current = Cursors.Default;
             }
+        }
+
+        private void authorizationRulesDataGridView_DataError(object sender, DataGridViewDataErrorEventArgs e)
+        {
+            e.Cancel = true;
+        }
+
+        /// <summary> 
+        /// Clean up any resources being used.
+        /// </summary>
+        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
+        protected override void Dispose(bool disposing)
+        {
+            try
+            {
+                if (disposing && (components != null))
+                {
+                    components.Dispose();
+                }
+
+                for (var i = 0; i < Controls.Count; i++)
+                {
+                    Controls[i].Dispose();
+                }
+
+                base.Dispose(disposing);
+            }
+            // ReSharper disable once EmptyGeneralCatchClause
+            catch
+            {
+            }
+        }
+
+        private void btnCloseTabs_Click(object sender, EventArgs e)
+        {
+            if (metricTabPageIndexList.Count <= 0)
+            {
+                return;
+            }
+            for (var i = 0; i < metricTabPageIndexList.Count; i++)
+            {
+                mainTabControl.TabPages.RemoveByKey(metricTabPageIndexList[i]);
+            }
+            metricTabPageIndexList.Clear();
+            btnCloseTabs.Enabled = false;
+        }
+
+        private void mainTabControl_Selected(object sender, TabControlEventArgs e)
+        {
+            if (string.Compare(e.TabPage.Name, MetricsTabPage, StringComparison.InvariantCultureIgnoreCase) != 0)
+            {
+                return;
+            }
+            Task.Run(() =>
+            {
+                metricsManualResetEvent.WaitOne();
+                var dataGridViewComboBoxColumn = (DataGridViewComboBoxColumn)dataPointDataGridView.Columns[MetricProperty];
+                if (dataGridViewComboBoxColumn != null)
+                {
+                    dataGridViewComboBoxColumn.DataSource = MetricInfo.EntityMetricDictionary.ContainsKey(TopicEntity)
+                        ? MetricInfo.EntityMetricDictionary[TopicEntity]
+                        : null;
+                }
+            });
         }
         #endregion
     }

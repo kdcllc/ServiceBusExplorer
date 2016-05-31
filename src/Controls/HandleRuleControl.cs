@@ -1,17 +1,21 @@
 ﻿#region Copyright
 //=======================================================================================
-// Microsoft Business Platform Division Customer Advisory Team  
+// Microsoft Azure Customer Advisory Team 
 //
-// This sample is supplemental to the technical guidance published on the community
-// blog at http://www.appfabriccat.com/. 
+// This sample is supplemental to the technical guidance published on my personal
+// blog at http://blogs.msdn.com/b/paolos/. 
 // 
 // Author: Paolo Salvatori
 //=======================================================================================
-// Copyright © 2011 Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // 
-// THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER 
-// EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF 
-// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. YOU BEAR THE RISK OF USING IT.
+// LICENSED UNDER THE APACHE LICENSE, VERSION 2.0 (THE "LICENSE"); YOU MAY NOT USE THESE 
+// FILES EXCEPT IN COMPLIANCE WITH THE LICENSE. YOU MAY OBTAIN A COPY OF THE LICENSE AT 
+// http://www.apache.org/licenses/LICENSE-2.0
+// UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING, SOFTWARE DISTRIBUTED UNDER THE 
+// LICENSE IS DISTRIBUTED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY 
+// KIND, EITHER EXPRESS OR IMPLIED. SEE THE LICENSE FOR THE SPECIFIC LANGUAGE GOVERNING 
+// PERMISSIONS AND LIMITATIONS UNDER THE LICENSE.
 //=======================================================================================
 #endregion
 
@@ -97,7 +101,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                 checkBoxDefault.Checked = ruleWrapper.RuleDescription.Name == RuleDescription.DefaultRuleName;
                 checkBoxDefault.Enabled = false;
                 SetReadOnly(this);
-                if (!string.IsNullOrEmpty(ruleWrapper.RuleDescription.Name))
+                if (!string.IsNullOrWhiteSpace(ruleWrapper.RuleDescription.Name))
                 {
                     txtName.Text = ruleWrapper.RuleDescription.Name;
                 }
@@ -168,9 +172,9 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                 }
                 if (btnCreateDelete.Text == RemoveText &&
                     ruleWrapper.SubscriptionDescription != null &&
-                    !string.IsNullOrEmpty(ruleWrapper.SubscriptionDescription.Name) &&
+                    !string.IsNullOrWhiteSpace(ruleWrapper.SubscriptionDescription.Name) &&
                     ruleWrapper.RuleDescription != null &&
-                    !string.IsNullOrEmpty(ruleWrapper.RuleDescription.Name))
+                    !string.IsNullOrWhiteSpace(ruleWrapper.RuleDescription.Name))
                 {
                     using (var deleteForm = new DeleteForm(ruleWrapper.RuleDescription.Name, RuleEntity.ToLower()))
                     {
@@ -183,7 +187,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                 }
                 if (btnCreateDelete.Text == AddText)
                 {
-                    if (string.IsNullOrEmpty(txtName.Text))
+                    if (string.IsNullOrWhiteSpace(txtName.Text))
                     {
                         writeToLog(NameCannotBeNull);
                         return;
@@ -191,11 +195,11 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
 
                     var ruleDescription = new RuleDescription(txtName.Text);
 
-                    if (!string.IsNullOrEmpty(txtSqlFilterExpression.Text))
+                    if (!string.IsNullOrWhiteSpace(txtSqlFilterExpression.Text))
                     {
                         ruleDescription.Filter = new SqlFilter(txtSqlFilterExpression.Text);
                     }
-                    if (!string.IsNullOrEmpty(txtSqlFilterAction.Text))
+                    if (!string.IsNullOrWhiteSpace(txtSqlFilterAction.Text))
                     {
                         ruleDescription.Action = new SqlRuleAction(txtSqlFilterAction.Text);
                     }
@@ -212,12 +216,12 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
 
         private void HandleException(Exception ex)
         {
-            if (ex == null || string.IsNullOrEmpty(ex.Message))
+            if (ex == null || string.IsNullOrWhiteSpace(ex.Message))
             {
                 return;
             }
             writeToLog(string.Format(CultureInfo.CurrentCulture, ExceptionFormat, ex.Message));
-            if (ex.InnerException != null && !string.IsNullOrEmpty(ex.InnerException.Message))
+            if (ex.InnerException != null && !string.IsNullOrWhiteSpace(ex.InnerException.Message))
             {
                 writeToLog(string.Format(CultureInfo.CurrentCulture, InnerExceptionFormat, ex.InnerException.Message));
             }
@@ -266,6 +270,33 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
             if (control != null)
             {
                 control.ForeColor = SystemColors.ControlText;
+            }
+        }
+
+        /// <summary> 
+        /// Clean up any resources being used.
+        /// </summary>
+        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
+        protected override void Dispose(bool disposing)
+        {
+            try
+            {
+                if (disposing && (components != null))
+                {
+                    components.Dispose();
+                }
+
+
+                for (var i = 0; i < Controls.Count; i++)
+                {
+                    Controls[i].Dispose();
+                }
+
+                base.Dispose(disposing);
+            }
+            // ReSharper disable once EmptyGeneralCatchClause
+            catch
+            {
             }
         }
         #endregion

@@ -1,3 +1,24 @@
+#region Copyright
+//=======================================================================================
+// Microsoft Azure Customer Advisory Team 
+//
+// This sample is supplemental to the technical guidance published on my personal
+// blog at http://blogs.msdn.com/b/paolos/. 
+// 
+// Author: Paolo Salvatori
+//=======================================================================================
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// 
+// LICENSED UNDER THE APACHE LICENSE, VERSION 2.0 (THE "LICENSE"); YOU MAY NOT USE THESE 
+// FILES EXCEPT IN COMPLIANCE WITH THE LICENSE. YOU MAY OBTAIN A COPY OF THE LICENSE AT 
+// http://www.apache.org/licenses/LICENSE-2.0
+// UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING, SOFTWARE DISTRIBUTED UNDER THE 
+// LICENSE IS DISTRIBUTED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY 
+// KIND, EITHER EXPRESS OR IMPLIED. SEE THE LICENSE FOR THE SPECIFIC LANGUAGE GOVERNING 
+// PERMISSIONS AND LIMITATIONS UNDER THE LICENSE.
+//=======================================================================================
+#endregion
+
 #region Using Directives
 using System;
 using System.ComponentModel;
@@ -787,80 +808,88 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
 		private Size FitSize
 		{
 			get 
-			{ 
-				Size fitSize;
-				float textAreaSize;
+			{
+			    try
+			    {
+                    Size fitSize;
+                    float textAreaSize;
 
-				// Create a Graphics object for the Control.
-				Graphics g = CreateGraphics();
+                    // Create a Graphics object for the Control.
+                    Graphics g = CreateGraphics();
 
-				Rectangle workingRect = Rectangle.Inflate(ClientRectangle, - indentWidth, - indentHeight);
-				float currentUsedPos = 0;
+                    Rectangle workingRect = Rectangle.Inflate(ClientRectangle, -indentWidth, -indentHeight);
+                    float currentUsedPos = 0;
 
-				if(orientation == Orientation.Horizontal)
-				{
-					currentUsedPos = indentHeight;
-					//==========================================================================
+                    if (orientation == Orientation.Horizontal)
+                    {
+                        currentUsedPos = indentHeight;
+                        //==========================================================================
 
-					// Get Height of Text Area
-					textAreaSize = g.MeasureString(maximum.ToString(), Font).Height;
+                        // Get Height of Text Area
+                        textAreaSize = g.MeasureString(maximum.ToString(), Font).Height;
 
-					if(textTickStyle == TickStyle.TopLeft || textTickStyle == TickStyle.Both)
-						currentUsedPos += textAreaSize;
+                        if (textTickStyle == TickStyle.TopLeft || textTickStyle == TickStyle.Both)
+                            currentUsedPos += textAreaSize;
 
-					if(tickStyle == TickStyle.TopLeft  || tickStyle == TickStyle.Both)
-						currentUsedPos += tickHeight + 1;
+                        if (tickStyle == TickStyle.TopLeft || tickStyle == TickStyle.Both)
+                            currentUsedPos += tickHeight + 1;
 
-					currentUsedPos += trackerSize.Height;
+                        currentUsedPos += trackerSize.Height;
 
-					if(tickStyle == TickStyle.BottomRight  || tickStyle == TickStyle.Both)
-					{
-						currentUsedPos += 1;
-						currentUsedPos += tickHeight;
-					}
+                        if (tickStyle == TickStyle.BottomRight || tickStyle == TickStyle.Both)
+                        {
+                            currentUsedPos += 1;
+                            currentUsedPos += tickHeight;
+                        }
 
-					if(textTickStyle == TickStyle.BottomRight || textTickStyle == TickStyle.Both)
-						currentUsedPos += textAreaSize;
+                        if (textTickStyle == TickStyle.BottomRight || textTickStyle == TickStyle.Both)
+                            currentUsedPos += textAreaSize;
 
-					currentUsedPos += indentHeight;
+                        currentUsedPos += indentHeight;
 
-					fitSize = new Size(ClientRectangle.Width,(int) currentUsedPos);
-				}
-				else //_orientation == Orientation.Vertical
-				{
-					currentUsedPos = indentWidth;
-					//==========================================================================
+                        fitSize = new Size(ClientRectangle.Width, (int)currentUsedPos);
+                    }
+                    else //_orientation == Orientation.Vertical
+                    {
+                        currentUsedPos = indentWidth;
+                        //==========================================================================
 
-					// Get Width of Text Area
-					textAreaSize = g.MeasureString(maximum.ToString(), Font).Width;
+                        // Get Width of Text Area
+                        textAreaSize = g.MeasureString(maximum.ToString(), Font).Width;
 
-					if(textTickStyle == TickStyle.TopLeft  || textTickStyle == TickStyle.Both)
-						currentUsedPos += textAreaSize;
+                        if (textTickStyle == TickStyle.TopLeft || textTickStyle == TickStyle.Both)
+                            currentUsedPos += textAreaSize;
 
-					if(tickStyle == TickStyle.TopLeft || tickStyle == TickStyle.Both)
-						currentUsedPos += tickHeight + 1;
+                        if (tickStyle == TickStyle.TopLeft || tickStyle == TickStyle.Both)
+                            currentUsedPos += tickHeight + 1;
 
-					currentUsedPos += trackerSize.Height;
+                        currentUsedPos += trackerSize.Height;
 
-					if(tickStyle == TickStyle.BottomRight  || tickStyle == TickStyle.Both)
-					{
-						currentUsedPos += 1;
-						currentUsedPos += tickHeight;
-					}
+                        if (tickStyle == TickStyle.BottomRight || tickStyle == TickStyle.Both)
+                        {
+                            currentUsedPos += 1;
+                            currentUsedPos += tickHeight;
+                        }
 
-					if(textTickStyle == TickStyle.BottomRight || textTickStyle == TickStyle.Both)
-						currentUsedPos += textAreaSize;
+                        if (textTickStyle == TickStyle.BottomRight || textTickStyle == TickStyle.Both)
+                            currentUsedPos += textAreaSize;
 
-					currentUsedPos += indentWidth;
+                        currentUsedPos += indentWidth;
 
-					fitSize = new Size((int) currentUsedPos, ClientRectangle.Height);
+                        fitSize = new Size((int)currentUsedPos, ClientRectangle.Height);
 
-				}
+                    }
 
-				// Clean up the Graphics object.
-				g.Dispose();
+                    // Clean up the Graphics object.
+                    g.Dispose();
 
-				return fitSize;
+                    return fitSize;
+			    }
+                // ReSharper disable once EmptyGeneralCatchClause
+			    catch (Exception)
+			    {
+			    }
+				return new Size(0,0);
 			}
 		}	
 

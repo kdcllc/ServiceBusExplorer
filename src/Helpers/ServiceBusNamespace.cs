@@ -1,28 +1,29 @@
 ﻿#region Copyright
 //=======================================================================================
-// Microsoft Business Platform Division Customer Advisory Team  
+// Microsoft Azure Customer Advisory Team 
 //
-// This sample is supplemental to the technical guidance published on the community
-// blog at http://www.appfabriccat.com/. 
+// This sample is supplemental to the technical guidance published on my personal
+// blog at http://blogs.msdn.com/b/paolos/. 
 // 
 // Author: Paolo Salvatori
 //=======================================================================================
-// Copyright © 2011 Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // 
-// THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER 
-// EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF 
-// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. YOU BEAR THE RISK OF USING IT.
+// LICENSED UNDER THE APACHE LICENSE, VERSION 2.0 (THE "LICENSE"); YOU MAY NOT USE THESE 
+// FILES EXCEPT IN COMPLIANCE WITH THE LICENSE. YOU MAY OBTAIN A COPY OF THE LICENSE AT 
+// http://www.apache.org/licenses/LICENSE-2.0
+// UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING, SOFTWARE DISTRIBUTED UNDER THE 
+// LICENSE IS DISTRIBUTED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY 
+// KIND, EITHER EXPRESS OR IMPLIED. SEE THE LICENSE FOR THE SPECIFIC LANGUAGE GOVERNING 
+// PERMISSIONS AND LIMITATIONS UNDER THE LICENSE.
 //=======================================================================================
 #endregion
 
 #region Using Directives
-
-
-
-#endregion
-
 using System;
 using Microsoft.ServiceBus;
+using Microsoft.ServiceBus.Messaging;
+#endregion
 
 namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
 {
@@ -38,6 +39,14 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
     /// </summary>
     public class ServiceBusNamespace
     {
+        #region Public Constants
+        //***************************
+        // Formats
+        //***************************
+        public const string ConnectionStringFormat = "Endpoint={0};SharedSecretIssuer={1};SharedSecretValue={2};TransportType={3}";
+        public const string SasConnectionStringFormat = "Endpoint={0};SharedAccessKeyName={1};SharedAccessKey={2};TransportType={3}";
+        #endregion
+
         #region Public Constructors
         /// <summary>
         /// Initializes a new instance of the ServiceBusHelper class.
@@ -66,32 +75,48 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
         /// <param name="connectionString">The service bus namespace connection string.</param>
         /// <param name="uri">The full address of the service bus namespace.</param>
         /// <param name="ns">The service bus namespace.</param>
-        /// <param name="issuerName">The issuer name of the shared secret credentials.</param>
-        /// <param name="issuerSecret">The issuer secret of the shared secret credentials.</param>
+        /// <param name="name">The issuer name of the shared secret credentials.</param>
+        /// <param name="key">The issuer secret of the shared secret credentials.</param>
         /// <param name="servicePath">The service path that follows the host name section of the URI.</param>
+        /// <param name="stsEndpoint">The sts endpoint of the service bus namespace.</param>
         /// <param name="transportType">The transport type to use to access the namespace.</param>
+        /// <param name="isSas">True is is SAS connection string, false otherwise.</param>
         public ServiceBusNamespace(ServiceBusNamespaceType connectionStringType,
                                    string connectionString,
                                    string uri,
                                    string ns,
                                    string servicePath,
-                                   string issuerName,
-                                   string issuerSecret,
-                                   string transportType)
+                                   string name,
+                                   string key,
+                                   string stsEndpoint,
+                                   TransportType transportType,
+                                   bool isSas = false)
         {
             ConnectionStringType = connectionStringType;
-            ConnectionString = connectionString;
-            Uri = uri;
-            if (string.IsNullOrEmpty(uri))
-            {
-                Uri = ServiceBusEnvironment.CreateServiceUri(transportType, ns, servicePath).ToString();
-            }
+            Uri = string.IsNullOrWhiteSpace(uri) ? 
+                  ServiceBusEnvironment.CreateServiceUri("sb", ns, servicePath).ToString() : 
+                  uri;
+            ConnectionString = ConnectionStringType == ServiceBusNamespaceType.Custom ? 
+                               ConnectionString = string.Format(ConnectionStringFormat,
+                                                                Uri,
+                                                                name,
+                                                                key,
+                                                                transportType) : 
+                               connectionString;
             Namespace = ns;
-            IssuerName = issuerName;
-            IssuerSecret = issuerSecret;
-            ServicePath = servicePath;
+            IssuerName = name;
+            if (isSas)
+            {
+                SharedAccessKeyName = name;
+                SharedAccessKey = key;
+            }
+            else
+            {
+                IssuerSecret = key;
+                ServicePath = servicePath;
+            }
             TransportType = transportType;
-            StsEndpoint = default(string);
+            StsEndpoint = stsEndpoint;
             RuntimePort = default(string);
             ManagementPort = default(string);
             WindowsDomain = default(string);
@@ -100,7 +125,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
         }
 
         /// <summary>
-        /// Initializes a new instance of the ServiceBusNamespace class.
+        /// Initializes a new instance of the ServiceBusNamespace class for an on-premises namespace.
         /// </summary>
         /// <param name="connectionString">The service bus namespace connection string.</param>
         /// <param name="endpoint">The endpoint of the service bus namespace.</param>
@@ -111,6 +136,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
         /// <param name="windowsUsername">The Windows user name.</param>
         /// <param name="windowsPassword">The Windows user password.</param>
         /// <param name="ns">The service bus namespace.</param>
+        /// <param name="transportType">The transport type to use to access the namespace.</param>
         public ServiceBusNamespace(string connectionString,
                                    string endpoint,
                                    string stsEndpoint,
@@ -119,26 +145,29 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                                    string windowsDomain,
                                    string windowsUsername,
                                    string windowsPassword,
-                                   string ns)
+                                   string ns,
+                                   TransportType transportType)
         {
             ConnectionStringType = ServiceBusNamespaceType.OnPremises;
             ConnectionString = connectionString;
             Uri = endpoint;
             var uri = new Uri(endpoint);
-            if (string.IsNullOrEmpty(endpoint))
+            if (string.IsNullOrWhiteSpace(endpoint))
             {
                 Uri = ServiceBusEnvironment.CreateServiceUri(uri.Scheme, ns, null).ToString();
             }
             Namespace = ns;
             IssuerName = default(string);
             IssuerSecret = default(string);
-            TransportType = default(string);
+            var settings = new MessagingFactorySettings();
+            TransportType = settings.TransportType;
             StsEndpoint = stsEndpoint;
             RuntimePort = runtimePort;
             ManagementPort = managementPort;
             WindowsDomain = windowsDomain;
             WindowsUserName = windowsUsername;
             WindowsPassword = windowsPassword;
+            TransportType = transportType;
         }
         #endregion
 
@@ -182,7 +211,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
         /// <summary>
         /// Gets or sets the transport type to use to access the namespace.
         /// </summary>
-        public string TransportType { get; set; }
+        public TransportType TransportType { get; set; }
 
         /// <summary>
         /// Gets or sets the URL of the sts endpoint.
@@ -213,6 +242,16 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
         /// Gets or sets the Windows user password.
         /// </summary>
         public string WindowsPassword { get; set; }
+
+        /// <summary>
+        /// Gets or sets the SharedAccessKeyName.
+        /// </summary>
+        public string SharedAccessKeyName { get; set; }
+
+        /// <summary>
+        /// Gets or sets the SharedAccessKey.
+        /// </summary>
+        public string SharedAccessKey { get; set; }
         #endregion
     }
 }

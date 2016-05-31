@@ -1,3 +1,24 @@
+#region Copyright
+//=======================================================================================
+// Microsoft Azure Customer Advisory Team 
+//
+// This sample is supplemental to the technical guidance published on my personal
+// blog at http://blogs.msdn.com/b/paolos/. 
+// 
+// Author: Paolo Salvatori
+//=======================================================================================
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// 
+// LICENSED UNDER THE APACHE LICENSE, VERSION 2.0 (THE "LICENSE"); YOU MAY NOT USE THESE 
+// FILES EXCEPT IN COMPLIANCE WITH THE LICENSE. YOU MAY OBTAIN A COPY OF THE LICENSE AT 
+// http://www.apache.org/licenses/LICENSE-2.0
+// UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING, SOFTWARE DISTRIBUTED UNDER THE 
+// LICENSE IS DISTRIBUTED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY 
+// KIND, EITHER EXPRESS OR IMPLIED. SEE THE LICENSE FOR THE SPECIFIC LANGUAGE GOVERNING 
+// PERMISSIONS AND LIMITATIONS UNDER THE LICENSE.
+//=======================================================================================
+#endregion
+
 #region Using Directives
 using System;
 using System.Collections;
@@ -62,7 +83,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                         var sPropName = enu.Current.ToString();
 
                         var comp = enu.Current as IComponent;
-                        if (comp != null && comp.Site != null && !String.IsNullOrEmpty(comp.Site.Name))
+                        if (comp != null && comp.Site != null && !String.IsNullOrWhiteSpace(comp.Site.Name))
                         {
                             sPropName = comp.Site.Name;
                         }
@@ -379,7 +400,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
             {
                 string keyName = cpd.KeyPrefix + cpd.Name + "_" + sva.Value.ToString() + "_Name";
                 string valueName = cpd.ResourceManager.GetString(keyName);
-                if (!String.IsNullOrEmpty(valueName))
+                if (!String.IsNullOrWhiteSpace(valueName))
                 {
                     rm = cpd.ResourceManager;
                     prefix = cpd.KeyPrefix + cpd.Name;
@@ -391,7 +412,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
             {
                 string keyName = cpd.KeyPrefix + cpd.PropertyType.Name + "_" + sva.Value.ToString() + "_Name";
                 string valueName = cpd.ResourceManager.GetString(keyName);
-                if (!String.IsNullOrEmpty(valueName))
+                if (!String.IsNullOrWhiteSpace(valueName))
                 {
                     rm = cpd.ResourceManager;
                     prefix = cpd.KeyPrefix + cpd.PropertyType.Name;
@@ -406,7 +427,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                 {
                     try
                     {
-                        if (String.IsNullOrEmpty(attr.AssemblyFullName) == false)
+                        if (String.IsNullOrWhiteSpace(attr.AssemblyFullName) == false)
                         {
                             rm = new ResourceManager(attr.BaseName, Assembly.ReflectionOnlyLoad(attr.AssemblyFullName));
                         }
@@ -441,7 +462,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                     {
                         Console.WriteLine(ex.Message);
                     }
-                    if (String.IsNullOrEmpty(dispName) == false)
+                    if (String.IsNullOrWhiteSpace(dispName) == false)
                     {
                         sv.DisplayName = dispName;
                     }
@@ -455,7 +476,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                     {
                         Console.WriteLine(ex.Message);
                     }
-                    if (String.IsNullOrEmpty(description) == false)
+                    if (String.IsNullOrWhiteSpace(description) == false)
                     {
                         sv.Description = description;
                     }

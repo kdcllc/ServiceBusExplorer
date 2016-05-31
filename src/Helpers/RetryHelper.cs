@@ -1,25 +1,29 @@
 ﻿#region Copyright
 //=======================================================================================
-// Microsoft Business Platform Division Customer Advisory Team  
+// Microsoft Azure Customer Advisory Team 
 //
-// This sample is supplemental to the technical guidance published on the community
-// blog at http://www.appfabriccat.com/. 
+// This sample is supplemental to the technical guidance published on my personal
+// blog at http://blogs.msdn.com/b/paolos/. 
 // 
 // Author: Paolo Salvatori
 //=======================================================================================
-// Copyright © 2011 Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // 
-// THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER 
-// EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF 
-// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. YOU BEAR THE RISK OF USING IT.
+// LICENSED UNDER THE APACHE LICENSE, VERSION 2.0 (THE "LICENSE"); YOU MAY NOT USE THESE 
+// FILES EXCEPT IN COMPLIANCE WITH THE LICENSE. YOU MAY OBTAIN A COPY OF THE LICENSE AT 
+// http://www.apache.org/licenses/LICENSE-2.0
+// UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING, SOFTWARE DISTRIBUTED UNDER THE 
+// LICENSE IS DISTRIBUTED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY 
+// KIND, EITHER EXPRESS OR IMPLIED. SEE THE LICENSE FOR THE SPECIFIC LANGUAGE GOVERNING 
+// PERMISSIONS AND LIMITATIONS UNDER THE LICENSE.
 //=======================================================================================
 #endregion
 
 #region Using Directives
 using System;
-using System.Diagnostics;
 using System.ServiceModel;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.ServiceBus.Messaging;
 #endregion
 
@@ -42,7 +46,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
         #endregion
 
         #region Private Static Fields
-        private static bool traceEnabled = false;
+        private static bool traceEnabled;
         private static int retryCount = DefaultRetryCount;
         private static int retryTimeout = DefaultRetryTimeout;
         #endregion
@@ -77,14 +81,11 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                     {
                         throw;
                     }
-                    if (traceEnabled)
-                    {
-                        writeToLog(string.Format(RetryingMethod, 
-                                                 ex.Message, 
-                                                 action.Method.Name, 
-                                                 retryCount - numRetries + 1, 
-                                                 retryCount), false);
-                    }
+                    writeToLog(string.Format(RetryingMethod,
+                                                 ex.Message,
+                                                 action.Method.Name,
+                                                 retryCount - numRetries + 1,
+                                                 retryCount));
                     Thread.Sleep(retryTimeout);
                 }
                 catch (TimeoutException ex)
@@ -93,14 +94,11 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                     {
                         throw;
                     }
-                    if (traceEnabled)
-                    {
-                        writeToLog(string.Format(RetryingMethod, 
-                                                 ex.Message, 
-                                                 action.Method.Name, 
-                                                 retryCount - numRetries + 1, 
-                                                 retryCount), false);
-                    }
+                    writeToLog(string.Format(RetryingMethod,
+                                                 ex.Message,
+                                                 action.Method.Name,
+                                                 retryCount - numRetries + 1,
+                                                 retryCount));
                     Thread.Sleep(retryTimeout);
                 }
                 catch (Exception ex)
@@ -109,14 +107,76 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                     {
                         throw;
                     }
-                    if (traceEnabled)
+                    writeToLog(string.Format(RetryingMethod,
+                                                 ex.Message,
+                                                 action.Method.Name,
+                                                 retryCount - numRetries + 1,
+                                                 retryCount));
+                    Thread.Sleep(retryTimeout);
+                }
+            } while (numRetries-- > 0);
+        }
+
+        public static async Task RetryActionAsync(Func<Task> action, WriteToLogDelegate writeToLog)
+        {
+            var numRetries = retryCount;
+
+            if (action == null)
+            {
+                throw new ArgumentNullException(ActionCannotBeNull);
+            }
+            do
+            {
+                try
+                {
+                    await action();
+                    return;
+                }
+                catch (MessagingEntityAlreadyExistsException)
+                {
+                    throw;
+                }
+                catch (CommunicationException)
+                {
+                    throw;
+                }
+                catch (MessagingException ex)
+                {
+                    if (numRetries == 0 || (!ex.IsTransient))
                     {
-                        writeToLog(string.Format(RetryingMethod, 
-                                                 ex.Message, 
-                                                 action.Method.Name, 
-                                                 retryCount - numRetries + 1, 
-                                                 retryCount), false);
+                        throw;
                     }
+                    writeToLog(string.Format(RetryingMethod,
+                                                 ex.Message,
+                                                 action.Method.Name,
+                                                 retryCount - numRetries + 1,
+                                                 retryCount));
+                    Thread.Sleep(retryTimeout);
+                }
+                catch (TimeoutException ex)
+                {
+                    if (numRetries == 0)
+                    {
+                        throw;
+                    }
+                    writeToLog(string.Format(RetryingMethod,
+                                                 ex.Message,
+                                                 action.Method.Name,
+                                                 retryCount - numRetries + 1,
+                                                 retryCount));
+                    Thread.Sleep(retryTimeout);
+                }
+                catch (Exception ex)
+                {
+                    if (numRetries == 0)
+                    {
+                        throw;
+                    }
+                    writeToLog(string.Format(RetryingMethod,
+                                                 ex.Message,
+                                                 action.Method.Name,
+                                                 retryCount - numRetries + 1,
+                                                 retryCount));
                     Thread.Sleep(retryTimeout);
                 }
             } while (numRetries-- > 0);
@@ -156,7 +216,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                                                  ex.Message, 
                                                  func.Method.Name, 
                                                  retryCount - numRetries + 1, 
-                                                 retryCount), false);
+                                                 retryCount));
                     }
                     Thread.Sleep(retryTimeout);
                 }
@@ -166,14 +226,11 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                     {
                         throw;
                     }
-                    if (traceEnabled)
-                    {
-                        writeToLog(string.Format(RetryingMethod, 
-                                                 ex.Message, 
-                                                 func.Method.Name, 
-                                                 retryCount - numRetries + 1, 
-                                                 retryCount), false);
-                    }
+                    writeToLog(string.Format(RetryingMethod,
+                                                 ex.Message,
+                                                 func.Method.Name,
+                                                 retryCount - numRetries + 1,
+                                                 retryCount));
                     Thread.Sleep(retryTimeout);
                 }
                 catch (TimeoutException ex)
@@ -182,14 +239,11 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                     {
                         throw;
                     }
-                    if (traceEnabled)
-                    {
-                        writeToLog(string.Format(RetryingMethod, 
-                                                 ex.Message, 
-                                                 func.Method.Name, 
-                                                 retryCount - numRetries + 1, 
-                                                 retryCount), false);
-                    }
+                    writeToLog(string.Format(RetryingMethod,
+                                                 ex.Message,
+                                                 func.Method.Name,
+                                                 retryCount - numRetries + 1,
+                                                 retryCount));
                     Thread.Sleep(retryTimeout);
                 }
                 catch (Exception ex)
@@ -198,14 +252,89 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
                     {
                         throw;
                     }
-                    if (traceEnabled)
-                    {
-                        writeToLog(string.Format(RetryingMethod, 
-                                                 ex.Message, 
+                    writeToLog(string.Format(RetryingMethod,
+                                                 ex.Message,
                                                  func.Method.Name,
-                                                 retryCount - numRetries + 1, 
-                                                 retryCount), false);
+                                                 retryCount - numRetries + 1,
+                                                 retryCount));
+                    Thread.Sleep(retryTimeout);
+                }
+            } while (numRetries-- > 0);
+            return default(T);
+        }
+
+        public static async Task<T> RetryFuncAsync<T>(Func<Task<T>> func, WriteToLogDelegate writeToLog)
+        {
+            var numRetries = retryCount;
+
+            if (func == null)
+            {
+                throw new ArgumentNullException(FuncCannotBeNull);
+            }
+            do
+            {
+                try
+                {
+                    return await func();
+                }
+                catch (MessagingEntityAlreadyExistsException)
+                {
+                    throw;
+                }
+                catch (CommunicationException)
+                {
+                    throw;
+                }
+                catch (ServerBusyException ex)
+                {
+                    if (numRetries == 0)
+                    {
+                        throw;
                     }
+                    writeToLog(string.Format(RetryingMethod,
+                                                 ex.Message,
+                                                 func.Method.Name,
+                                                 retryCount - numRetries + 1,
+                                                 retryCount));
+                    Thread.Sleep(retryTimeout);
+                }
+                catch (MessagingCommunicationException ex)
+                {
+                    if (numRetries == 0)
+                    {
+                        throw;
+                    }
+                    writeToLog(string.Format(RetryingMethod,
+                                                 ex.Message,
+                                                 func.Method.Name,
+                                                 retryCount - numRetries + 1,
+                                                 retryCount));
+                    Thread.Sleep(retryTimeout);
+                }
+                catch (TimeoutException ex)
+                {
+                    if (numRetries == 0)
+                    {
+                        throw;
+                    }
+                    writeToLog(string.Format(RetryingMethod,
+                                                 ex.Message,
+                                                 func.Method.Name,
+                                                 retryCount - numRetries + 1,
+                                                 retryCount));
+                    Thread.Sleep(retryTimeout);
+                }
+                catch (Exception ex)
+                {
+                    if (numRetries == 0)
+                    {
+                        throw;
+                    }
+                    writeToLog(string.Format(RetryingMethod,
+                                                 ex.Message,
+                                                 func.Method.Name,
+                                                 retryCount - numRetries + 1,
+                                                 retryCount));
                     Thread.Sleep(retryTimeout);
                 }
             } while (numRetries-- > 0);

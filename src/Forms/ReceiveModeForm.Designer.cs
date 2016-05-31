@@ -1,17 +1,21 @@
 ﻿#region Copyright
 //=======================================================================================
-// Microsoft Business Platform Division Customer Advisory Team  
+// Microsoft Azure Customer Advisory Team 
 //
-// This sample is supplemental to the technical guidance published on the community
-// blog at http://www.appfabriccat.com/. 
+// This sample is supplemental to the technical guidance published on my personal
+// blog at http://blogs.msdn.com/b/paolos/. 
 // 
 // Author: Paolo Salvatori
 //=======================================================================================
-// Copyright © 2011 Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // 
-// THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER 
-// EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF 
-// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. YOU BEAR THE RISK OF USING IT.
+// LICENSED UNDER THE APACHE LICENSE, VERSION 2.0 (THE "LICENSE"); YOU MAY NOT USE THESE 
+// FILES EXCEPT IN COMPLIANCE WITH THE LICENSE. YOU MAY OBTAIN A COPY OF THE LICENSE AT 
+// http://www.apache.org/licenses/LICENSE-2.0
+// UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING, SOFTWARE DISTRIBUTED UNDER THE 
+// LICENSE IS DISTRIBUTED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY 
+// KIND, EITHER EXPRESS OR IMPLIED. SEE THE LICENSE FOR THE SPECIFIC LANGUAGE GOVERNING 
+// PERMISSIONS AND LIMITATIONS UNDER THE LICENSE.
 //=======================================================================================
 #endregion
 
@@ -51,6 +55,8 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
             this.btnOk = new System.Windows.Forms.Button();
             this.btnCancel = new System.Windows.Forms.Button();
             this.mainPanel = new System.Windows.Forms.Panel();
+            this.grouperInspector = new Microsoft.WindowsAzure.CAT.ServiceBusExplorer.Grouper();
+            this.cboReceiverInspector = new System.Windows.Forms.ComboBox();
             this.grouperMessages = new Microsoft.WindowsAzure.CAT.ServiceBusExplorer.Grouper();
             this.txtMessageCount = new System.Windows.Forms.TextBox();
             this.btnTop = new System.Windows.Forms.RadioButton();
@@ -59,6 +65,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
             this.btnReceive = new System.Windows.Forms.RadioButton();
             this.btnPeek = new System.Windows.Forms.RadioButton();
             this.mainPanel.SuspendLayout();
+            this.grouperInspector.SuspendLayout();
             this.grouperMessages.SuspendLayout();
             this.grouperReadMode.SuspendLayout();
             this.SuspendLayout();
@@ -71,7 +78,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
             this.btnOk.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(153)))), ((int)(((byte)(180)))), ((int)(((byte)(209)))));
             this.btnOk.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(153)))), ((int)(((byte)(180)))), ((int)(((byte)(209)))));
             this.btnOk.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnOk.Location = new System.Drawing.Point(232, 97);
+            this.btnOk.Location = new System.Drawing.Point(296, 181);
             this.btnOk.Name = "btnOk";
             this.btnOk.Size = new System.Drawing.Size(72, 24);
             this.btnOk.TabIndex = 1;
@@ -89,7 +96,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
             this.btnCancel.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(153)))), ((int)(((byte)(180)))), ((int)(((byte)(209)))));
             this.btnCancel.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(153)))), ((int)(((byte)(180)))), ((int)(((byte)(209)))));
             this.btnCancel.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnCancel.Location = new System.Drawing.Point(312, 97);
+            this.btnCancel.Location = new System.Drawing.Point(376, 181);
             this.btnCancel.Name = "btnCancel";
             this.btnCancel.Size = new System.Drawing.Size(72, 24);
             this.btnCancel.TabIndex = 2;
@@ -104,13 +111,49 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
             this.mainPanel.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.mainPanel.BackColor = System.Drawing.SystemColors.Window;
+            this.mainPanel.Controls.Add(this.grouperInspector);
             this.mainPanel.Controls.Add(this.grouperMessages);
             this.mainPanel.Controls.Add(this.grouperReadMode);
             this.mainPanel.Location = new System.Drawing.Point(0, 0);
             this.mainPanel.Name = "mainPanel";
-            this.mainPanel.Size = new System.Drawing.Size(400, 88);
+            this.mainPanel.Size = new System.Drawing.Size(464, 168);
             this.mainPanel.TabIndex = 0;
             this.mainPanel.Paint += new System.Windows.Forms.PaintEventHandler(this.mainPanel_Paint);
+            // 
+            // grouperInspector
+            // 
+            this.grouperInspector.BackgroundColor = System.Drawing.Color.White;
+            this.grouperInspector.BackgroundGradientColor = System.Drawing.Color.White;
+            this.grouperInspector.BackgroundGradientMode = Microsoft.WindowsAzure.CAT.ServiceBusExplorer.Grouper.GroupBoxGradientMode.None;
+            this.grouperInspector.BorderColor = System.Drawing.Color.FromArgb(((int)(((byte)(153)))), ((int)(((byte)(180)))), ((int)(((byte)(209)))));
+            this.grouperInspector.BorderThickness = 1F;
+            this.grouperInspector.Controls.Add(this.cboReceiverInspector);
+            this.grouperInspector.CustomGroupBoxColor = System.Drawing.Color.FromArgb(((int)(((byte)(153)))), ((int)(((byte)(180)))), ((int)(((byte)(209)))));
+            this.grouperInspector.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F);
+            this.grouperInspector.ForeColor = System.Drawing.Color.White;
+            this.grouperInspector.GroupImage = null;
+            this.grouperInspector.GroupTitle = "Message Inspector";
+            this.grouperInspector.Location = new System.Drawing.Point(16, 80);
+            this.grouperInspector.Name = "grouperInspector";
+            this.grouperInspector.Padding = new System.Windows.Forms.Padding(20);
+            this.grouperInspector.PaintGroupBox = true;
+            this.grouperInspector.RoundCorners = 4;
+            this.grouperInspector.ShadowColor = System.Drawing.Color.DarkGray;
+            this.grouperInspector.ShadowControl = false;
+            this.grouperInspector.ShadowThickness = 1;
+            this.grouperInspector.Size = new System.Drawing.Size(432, 72);
+            this.grouperInspector.TabIndex = 43;
+            this.grouperInspector.CustomPaint += new System.Action<System.Windows.Forms.PaintEventArgs>(this.grouperInspector_CustomPaint);
+            // 
+            // cboReceiverInspector
+            // 
+            this.cboReceiverInspector.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cboReceiverInspector.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.cboReceiverInspector.FormattingEnabled = true;
+            this.cboReceiverInspector.Location = new System.Drawing.Point(16, 32);
+            this.cboReceiverInspector.Name = "cboReceiverInspector";
+            this.cboReceiverInspector.Size = new System.Drawing.Size(400, 21);
+            this.cboReceiverInspector.TabIndex = 92;
             // 
             // grouperMessages
             // 
@@ -127,7 +170,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
             this.grouperMessages.ForeColor = System.Drawing.Color.White;
             this.grouperMessages.GroupImage = null;
             this.grouperMessages.GroupTitle = "Message Count";
-            this.grouperMessages.Location = new System.Drawing.Point(208, 8);
+            this.grouperMessages.Location = new System.Drawing.Point(240, 8);
             this.grouperMessages.Name = "grouperMessages";
             this.grouperMessages.Padding = new System.Windows.Forms.Padding(20);
             this.grouperMessages.PaintGroupBox = true;
@@ -135,7 +178,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
             this.grouperMessages.ShadowColor = System.Drawing.Color.DarkGray;
             this.grouperMessages.ShadowControl = false;
             this.grouperMessages.ShadowThickness = 1;
-            this.grouperMessages.Size = new System.Drawing.Size(176, 64);
+            this.grouperMessages.Size = new System.Drawing.Size(208, 64);
             this.grouperMessages.TabIndex = 42;
             // 
             // txtMessageCount
@@ -144,7 +187,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
             | System.Windows.Forms.AnchorStyles.Right)));
             this.txtMessageCount.Location = new System.Drawing.Point(112, 32);
             this.txtMessageCount.Name = "txtMessageCount";
-            this.txtMessageCount.Size = new System.Drawing.Size(48, 20);
+            this.txtMessageCount.Size = new System.Drawing.Size(80, 20);
             this.txtMessageCount.TabIndex = 42;
             this.txtMessageCount.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.txtMessageCount_KeyPress);
             // 
@@ -196,7 +239,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
             this.grouperReadMode.ShadowColor = System.Drawing.Color.DarkGray;
             this.grouperReadMode.ShadowControl = false;
             this.grouperReadMode.ShadowThickness = 1;
-            this.grouperReadMode.Size = new System.Drawing.Size(176, 64);
+            this.grouperReadMode.Size = new System.Drawing.Size(208, 64);
             this.grouperReadMode.TabIndex = 41;
             // 
             // btnReceive
@@ -205,9 +248,9 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
             this.btnReceive.ForeColor = System.Drawing.SystemColors.ControlText;
             this.btnReceive.Location = new System.Drawing.Point(80, 32);
             this.btnReceive.Name = "btnReceive";
-            this.btnReceive.Size = new System.Drawing.Size(65, 17);
+            this.btnReceive.Size = new System.Drawing.Size(120, 17);
             this.btnReceive.TabIndex = 39;
-            this.btnReceive.Text = "Receive";
+            this.btnReceive.Text = "Receive and Delete";
             this.btnReceive.UseVisualStyleBackColor = true;
             this.btnReceive.CheckedChanged += new System.EventHandler(this.receiveMode_CheckedChanged);
             // 
@@ -230,7 +273,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(215)))), ((int)(((byte)(228)))), ((int)(((byte)(242)))));
-            this.ClientSize = new System.Drawing.Size(400, 133);
+            this.ClientSize = new System.Drawing.Size(464, 217);
             this.Controls.Add(this.mainPanel);
             this.Controls.Add(this.btnCancel);
             this.Controls.Add(this.btnOk);
@@ -244,6 +287,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
             this.Text = "Enter Value";
             this.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.ReceiveModeForm_KeyPress);
             this.mainPanel.ResumeLayout(false);
+            this.grouperInspector.ResumeLayout(false);
             this.grouperMessages.ResumeLayout(false);
             this.grouperMessages.PerformLayout();
             this.grouperReadMode.ResumeLayout(false);
@@ -264,5 +308,7 @@ namespace Microsoft.WindowsAzure.CAT.ServiceBusExplorer
         private Grouper grouperReadMode;
         private System.Windows.Forms.RadioButton btnReceive;
         private System.Windows.Forms.RadioButton btnPeek;
+        private Grouper grouperInspector;
+        private System.Windows.Forms.ComboBox cboReceiverInspector;
     }
 }
