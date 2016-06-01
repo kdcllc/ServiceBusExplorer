@@ -13,6 +13,14 @@ The latest version of this project can be found [here on github.com](https://git
 2. Version 2.0  - https://github.com/kdcllc/ServiceBusExplorer/tree/v2.0.0
 
 ###Binaries
-1. version 1.8 - https://github.com/kdcllc/ServiceBusExplorer/blob/master/src/1.8.zip
+1. version 1.8 - https://github.com/kdcllc/ServiceBusExplorer/blob/master/src/1.8.zip 
+    (this version provides the ability to pick into message but doesn’t show accurate message count.)
 2. version 2.0 - https://github.com/kdcllc/ServiceBusExplorer/blob/master/src/2.0.zip
+(This version shows the message counts correctly but can’t peek. 
+It pulls the messages which in turns removes them from the queue or a topic.) 
 3. version 2.1 - https://github.com/kdcllc/ServiceBusExplorer/blob/master/src/2.1.zip
+
+###Notes
+Service Bus doesn’t have any way to see what’s in the queues without a peek and each peek counts against your max received count for message. 
+So, if you check what’s on the queue 10 times before a message is actually picked up by a true client, the message gets dead-lettered.
+
